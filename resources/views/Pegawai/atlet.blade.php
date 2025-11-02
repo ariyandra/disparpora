@@ -40,10 +40,11 @@
                 <li class="nav-item">
                     <a href="{{ route('jadwal') }}" class="nav-link">Jadwal</a>
                 </li>
+                @if(auth()->user()->role == 0 || auth()->user()->role == 1)
                 <li class="nav-item">
                     <a href="{{ route('user') }}" class="nav-link">User</a>
                 </li>
-                @include('partials.notifications')
+                @endif
                 <li>
                     <a href="{{ route('logout.admin') }}" class="relative overflow-hidden bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +59,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">

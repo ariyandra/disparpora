@@ -51,7 +51,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
@@ -95,16 +95,9 @@
                                 <td>{{ $item->keterangan }}</td>
                                 <td class="action-cell">
                                     <div class="action-buttons">
-                                        <!-- Formulir Ubah -->
-                                        <form action="{{ route('pelatih.ubahAbsensi') }}" method="POST">
-                                            @csrf
-                                            <!-- Variabel $absensi diganti menjadi $item -->
-                                            <input type="hidden" name="id_absensi" value="{{ $item->id }}">
-                                            <button type="submit" class="btn-action btn-edit">
-                                                <span>✏️</span> Edit
-                                            </button>
-                                        </form>
-
+                                        <a href="{{ route('pelatih.ubahAbsensi', ['id' => $item->id]) }}" class="btn-action btn-edit" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;text-decoration:none;">
+                                            <span>✏️</span> Edit
+                                        </a>
                                         <!-- Formulir Hapus -->
                                         <form action="{{ route('pelatih.hapusAbsensi') }}" method="POST">
                                             @csrf

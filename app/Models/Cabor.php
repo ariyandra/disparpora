@@ -25,4 +25,19 @@ class Cabor extends Model
     public function jadwal(){
         return $this->hasMany(Jadwal::class, 'id_cabor');
     }
+
+    public function created_by()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function kecamatan()
+    {
+        return $this->belongsTo(Kecamatan::class, 'kecamatan_id');
+    }
+
+    public function nagari()
+    {
+        return $this->belongsTo(Nagari::class, 'nagari_id');
+    }
 }

@@ -56,7 +56,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">

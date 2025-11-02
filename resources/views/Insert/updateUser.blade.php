@@ -56,7 +56,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
@@ -154,8 +154,36 @@
                                     onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Role</option>
-                                <option value=1>Pegawai</option>
+                                <option value=0 {{ $dataUser->role == 0 ? 'selected' : '' }}>Admin</option>
+                                <option value=1 {{ $dataUser->role == 1 ? 'selected' : '' }}>Pegawai</option>
+                                <option value=2 {{ $dataUser->role == 2 ? 'selected' : '' }}>Kecamatan</option>
+                                <option value=3 {{ $dataUser->role == 3 ? 'selected' : '' }}>Nagari</option>
+                                <option value=4 {{ $dataUser->role == 4 ? 'selected' : '' }}>Pelatih</option>
+                                <option value=5 {{ $dataUser->role == 5 ? 'selected' : '' }}>Atlet</option>
                             </select>
+                        </div>
+
+                        <!-- Kecamatan dropdown (shown when role == 2) -->
+                        <div id="kecamatanField" style="display:none;">
+                            <label for="kecamatan_id">Kecamatan</label>
+                            <select id="kecamatan_id" name="kecamatan_id" style="padding:8px; width:100%">
+                                <option value="">Pilih Kecamatan</option>
+                                @foreach($kecamatans as $kec)
+                                    <option value="{{ $kec->id }}" {{ $dataUser->kecamatan_id == $kec->id ? 'selected' : '' }}>{{ $kec->nama_kecamatan ?? $kec->name ?? 'Kecamatan '.$kec->id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Nagari dropdown (shown when role == 3) -->
+                        <div id="nagariField" style="display:none;">
+                            <label for="id_nagari">Nagari</label>
+                            <select id="id_nagari" name="id_nagari" style="padding:8px; width:100%">
+                                <option value="">Pilih Nagari</option>
+                                @foreach($nagaris as $n)
+                                    <option value="{{ $n->id }}" {{ $dataUser->id_nagari == $n->id ? 'selected' : '' }}>{{ $n->nama_nagari ?? $n->name ?? 'Nagari '.$n->id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         </div>
                     </div>
 

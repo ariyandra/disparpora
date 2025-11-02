@@ -45,7 +45,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <div class="page-header">
                 <h1 class="page-title">Asesmen</h1>
             </div>

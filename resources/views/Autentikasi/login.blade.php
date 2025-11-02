@@ -133,17 +133,6 @@
             accent-color: #667eea;
         }
 
-        .forgot-password {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .forgot-password:hover {
-            color: #764ba2;
-        }
-
         .login-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;

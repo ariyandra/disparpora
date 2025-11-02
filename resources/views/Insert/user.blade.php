@@ -56,7 +56,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
@@ -152,7 +152,33 @@
                                     onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Role</option>
+                                <option value=0>Admin</option>
                                 <option value=1>Pegawai</option>
+                                <option value=2>Kecamatan</option>
+                                <option value=3>Nagari</option>
+                                <option value=4>Pelatih</option>
+                                <option value=5>Atlet</option>
+                            </select>
+                        </div>
+                        <!-- Kecamatan dropdown (shown when role == 2) -->
+                        <div id="kecamatanField" style="display:none;">
+                            <label for="kecamatan_id">Kecamatan</label>
+                            <select id="kecamatan_id" name="kecamatan_id" style="padding:8px; width:100%">
+                                <option value="">Pilih Kecamatan</option>
+                                @foreach($kecamatans as $kec)
+                                    <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan ?? $kec->name ?? 'Kecamatan '.$kec->id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Nagari dropdown (shown when role == 3) -->
+                        <div id="nagariField" style="display:none;">
+                            <label for="id_nagari">Nagari</label>
+                            <select id="id_nagari" name="id_nagari" style="padding:8px; width:100%">
+                                <option value="">Pilih Nagari</option>
+                                @foreach($nagaris as $n)
+                                    <option value="{{ $n->id }}">{{ $n->nama_nagari ?? $n->name ?? 'Nagari '.$n->id }}</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
@@ -177,7 +203,7 @@
         </div>
     </main>
 
-    <script>
+                    <script>
         // Password visibility toggle
         function togglePasswordVisibility() {
             const passwordField = document.getElementById('password');
@@ -304,21 +330,22 @@
                 }
             });
 
-            // Role-based styling
+            // Role-based styling + show/hide area fields
             const roleField = document.getElementById('role');
+            const kecField = document.getElementById('kecamatanField');
+            const nagariField = document.getElementById('nagariField');
             roleField.addEventListener('change', function() {
-                const roleColors = {
-                    'Admin': '#ff6b6b',
-                    'Pegawai': '#4caf50',
-                    'Pelatih': '#2196f3',
-                    'Atlet': '#ff9800'
-                };
-                
-                if (this.value && roleColors[this.value]) {
-                    this.style.borderColor = roleColors[this.value];
-                    setTimeout(() => {
-                        this.style.borderColor = '#e0e0e0';
-                    }, 1000);
+                const val = this.value;
+                // show kecamatan when role == 2, nagari when role == 3
+                if(val == '2'){
+                    kecField.style.display = '';
+                    nagariField.style.display = 'none';
+                } else if(val == '3'){
+                    kecField.style.display = 'none';
+                    nagariField.style.display = '';
+                } else {
+                    kecField.style.display = 'none';
+                    nagariField.style.display = 'none';
                 }
             });
         });

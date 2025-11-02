@@ -100,7 +100,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <div id="printable">
-        <div class="profile-card">
+        <div class="profile-card mt-32 sm:mt-40">
             <!-- Profile Header -->
             <div class="profile-header">
                 <div class="profile-header-content">

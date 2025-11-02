@@ -51,11 +51,11 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
-            <div class="page-header-card">
-                <div class="flex justify-between items-center">
-                    <h1 class="page-title">Atlet</h1>
+            <div class="page-header-card bg-white sticky top-16 z-10 shadow-sm border-b border-gray-200">
+                <div class="flex justify-between items-center p-4">
+                    <h1 class="page-title text-xl sm:text-2xl font-bold">Atlet</h1>
                 </div>
             </div>
 

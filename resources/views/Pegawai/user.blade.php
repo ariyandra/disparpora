@@ -56,7 +56,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
@@ -95,9 +95,19 @@
                             <td>{{ $pegawai->email }}</td>
                             <td>
                                 @if($pegawai->role == 0)
-                                Admin
+                                    Admin
                                 @elseif($pegawai->role == 1)
-                                pegawai
+                                    Pegawai
+                                @elseif($pegawai->role == 2)
+                                    Kecamatan
+                                @elseif($pegawai->role == 3)
+                                    Nagari
+                                @elseif($pegawai->role == 4)
+                                    Pelatih
+                                @elseif($pegawai->role == 5)
+                                    Atlet
+                                @else
+                                    -
                                 @endif
                             </td>
                             <td>

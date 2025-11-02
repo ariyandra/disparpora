@@ -50,12 +50,12 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
                     <h1 class="page-title">Tambah Absensi</h1>
-                    <a href="" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
+                    <a href="{{ route('absensi.pelatih') }}" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
                         <span>←</span> Kembali
                     </a>
                 </div>

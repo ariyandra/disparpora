@@ -66,5 +66,8 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'pelatih' => \App\Http\Middleware\Pelatih::class,
         'atlet' => \App\Http\Middleware\Atlet::class,
+        'kecamatan' => \App\Http\Middleware\KecamatanMiddleware::class,
+        'nagari' => \App\Http\Middleware\NagariMiddleware::class,
+        'restrict.user' => \App\Http\Middleware\RestrictUserAccess::class,
     ];
 }

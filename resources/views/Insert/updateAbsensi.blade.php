@@ -33,7 +33,7 @@
                     <a href="{{ route('asesmen') }}" class="nav-link">Asesmen</a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('absensi') }}" class="nav-link active">Absensi</a>
+                    <a href="{{ route('absensi.pelatih') }}" class="nav-link active">Absensi</a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('jadwal') }}" class="nav-link">Jadwal</a>
@@ -100,12 +100,12 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
                     <h1 class="page-title">Update Data Absensi</h1>
-                    <a href="{{ route('data.absensi') }}" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
+                        <a href="{{ route('absensi.pelatih') }}" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
                         <span>←</span> Kembali
                     </a>
                 </div>
@@ -216,7 +216,7 @@
                     <!-- Form Actions -->
                     <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 2px solid #f0f0f0; position: relative;">
                         <div style="position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 60px; height: 2px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 1px;"></div>
-                        <a href="{{ route('absensi') }}" 
+                        <a href="{{ route('absensi.pelatih') }}" 
                            style="padding: 12px 24px; border: 2px solid #e0e0e0; background: white; border-radius: 25px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; text-decoration: none; color: #666; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);"
                            onmouseover="this.style.borderColor='#999'; this.style.color='#333'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(0,0,0,0.15)'"
                            onmouseout="this.style.borderColor='#e0e0e0'; this.style.color='#666'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 10px rgba(0,0,0,0.1)'">

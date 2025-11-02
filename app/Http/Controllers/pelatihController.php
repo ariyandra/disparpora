@@ -134,7 +134,10 @@ class pelatihController extends Controller
     }
 
     public function ubahAbsensi(Request $request){
-        $validate = Validator::make($request->all(), [
+    // Accept id from query string (?id=4) or from request body (id_absensi) for compatibility
+    $id = $request->query('id') ?? $request->route('id') ?? $request->input('id_absensi');
+
+        $validate = Validator::make(['id_absensi' => $id], [
             'id_absensi' => 'required|exists:absensis,id',
         ]);
 
@@ -142,7 +145,7 @@ class pelatihController extends Controller
             return redirect()->back()->with('error', 'Data tidak ditemukan.');
         }
 
-        $dataAbsensi = Absensi::where('id', $request->id_absensi)->first();
+        $dataAbsensi = Absensi::where('id', $id)->first();
         $dataAtlet = Atlet::all();
         return view('insert.ubahAbsensi', compact( 'dataAbsensi', 'dataAtlet'));
     }

@@ -18,5 +18,8 @@ class Jadwal extends Model
         return $this->belongsTo(Cabor::class, 'id_cabor');
     }
 
-    
+    public function created_by()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

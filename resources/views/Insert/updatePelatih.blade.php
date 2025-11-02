@@ -56,7 +56,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
@@ -118,14 +118,13 @@
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="password" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🔒 Password <span style="color: #ff6b6b;">*</span>
+                                🔒 Password (opsional)
                             </label>
-                            <input type="password" 
-                                   id="password" 
-                                   name="password" 
-                                   required
+                            <input type="password"
+                                   id="password"
+                                   name="password"
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                   placeholder="Minimal 8 karakter"
+                                   placeholder="Kosongkan jika tidak ingin mengubah"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>

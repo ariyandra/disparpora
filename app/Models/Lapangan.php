@@ -13,4 +13,9 @@ class Lapangan extends Model
     public function cabor(){
         return $this->belongsTo(Cabor::class, 'id_cabor');
     }
+
+    public function created_by()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

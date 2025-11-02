@@ -19,4 +19,19 @@ class Pelatih extends Authenticatable
     public function asesmen(){
         return $this->hasMany(Asesmen::class, 'id_pelatih');
     }
+
+    public function created_by()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function kecamatan()
+    {
+        return $this->belongsTo(Kecamatan::class, 'kecamatan_id');
+    }
+
+    public function nagari()
+    {
+        return $this->belongsTo(Nagari::class, 'nagari_id');
+    }
 }

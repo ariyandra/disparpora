@@ -41,9 +41,11 @@
                 <li class="nav-item">
                     <a href="{{ route('jadwal') }}" class="nav-link active">Jadwal</a>
                 </li>
+                @if(auth()->user()->role == 0 || auth()->user()->role == 1)
                 <li class="nav-item">
                     <a href="{{ route('user') }}" class="nav-link">User</a>
                 </li>
+                @endif
             </ul>
             
             <a href="{{ route('logout.admin') }}" class="logout-btn">
@@ -56,7 +58,7 @@
     </nav>
 
     <main class="main-content">
-        <div class="page-container">
+        <div class="page-container mt-32 sm:mt-40">
             <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">

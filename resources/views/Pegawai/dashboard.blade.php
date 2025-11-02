@@ -43,9 +43,11 @@
                 <li class="nav-item">
                     <a href="{{ route('jadwal') }}" class="nav-link">Jadwal</a>
                 </li>
+                @if(auth()->user()->role == 0 || auth()->user()->role == 1)
                 <li class="nav-item">
                     <a href="{{ route('user') }}" class="nav-link">User</a>
                 </li>
+                @endif
                 @include('partials.notifications')
             </ul>
             

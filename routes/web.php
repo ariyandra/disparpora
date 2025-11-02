@@ -14,7 +14,7 @@ Route::get('/loginAtlet', [autentikasiController::class, 'loginAtlet'])->name('l
 
 //Admin
 Route::post('/login', [autentikasiController::class, 'loginAdmin'])->name('login.admin');
-Route::middleware('auth')->group(function(){
+Route::middleware(['auth', 'restrict.user'])->group(function(){
     Route::get('/admin/dashboard', [adminController::class, 'index'])->name('dashboard.pegawai');
     Route::get('/admin/dataPelatih', [adminController::class, 'pagePelatih'])->name('data.pelatih');
     Route::get('/admin/logout', [autentikasiController::class, 'logoutAdmin'])->name('logout.admin');
@@ -76,7 +76,7 @@ Route::middleware('pelatih')->group(function(){
     Route::get('/pelatih/absensi', [pelatihController::class, 'absensi'])->name('absensi.pelatih');
     Route::get('/pelatih/isiAbsensi', [pelatihController::class, 'isiAbsensi'])->name('pelatih.isiAbsensi');
     Route::post('/pelatih/simpanAbsensi', [pelatihController::class, 'simpanAbsensi'])->name('pelatih.simpanAbsensi');
-    Route::post('/pelatih/ubahAbsensi', [pelatihController::class, 'ubahAbsensi'])->name('pelatih.ubahAbsensi');
+    Route::get('/pelatih/ubahAbsensi', [pelatihController::class, 'ubahAbsensi'])->name('pelatih.ubahAbsensi');
     Route::post('/pelatih/simpanUbahAbsensi', [pelatihController::class, 'simpanUbahAbsensi'])->name('pelatih.simpanUbahAbsensi');
     Route::post('/pelatih/absensi/hapus', [pelatihController::class, 'hapusAbsensi'])->name('pelatih.hapusAbsensi');
     Route::get('/pelatih/jadwal', [pelatihController::class, 'jadwal'])->name('jadwal.pelatih');
