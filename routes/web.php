@@ -6,14 +6,22 @@ use App\Http\Controllers\autentikasiController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\pelatihController;
+use App\Http\Controllers\autentikasiController as AuthCtl;
 
 Route::get('/', [Controller::class, 'index']);
-Route::get('/login', [Controller::class, 'Autentikasi'])->name('auntentikasi');
-Route::get('/loginPelatih', [autentikasiController::class, 'loginPelatih'])->name('login.pelatih');
-Route::get('/loginAtlet', [autentikasiController::class, 'loginAtlet'])->name('login.atlet');
+Route::get('/login', [AuthCtl::class, 'unifiedLogin'])->name('login');
+// Redirect halaman login lama ke halaman login tunggal
+Route::redirect('/loginPelatih', '/login', 301)->name('login.pelatih');
+Route::redirect('/loginAtlet', '/login', 301)->name('login.atlet');
+// Forgot/Reset Password (email verification flow)
+Route::get('/forgot-password', [AuthCtl::class, 'forgotPasswordForm'])->name('password.forgot');
+Route::post('/forgot-password', [AuthCtl::class, 'forgotPasswordSubmit'])->name('password.forgot.submit');
+Route::get('/password/reset/{token}', [AuthCtl::class, 'showResetForm'])->name('password.reset');
+Route::post('/password/reset', [AuthCtl::class, 'submitPasswordReset'])->name('password.reset.submit');
 
 //Admin
-Route::post('/login', [autentikasiController::class, 'loginAdmin'])->name('login.admin');
+// Submit login tunggal untuk semua peran
+Route::post('/login', [AuthCtl::class, 'submitUnifiedLogin'])->name('login.submit');
 Route::middleware(['auth', 'restrict.user'])->group(function(){
     Route::get('/admin/dashboard', [adminController::class, 'index'])->name('dashboard.pegawai');
     Route::get('/admin/dataPelatih', [adminController::class, 'pagePelatih'])->name('data.pelatih');
@@ -21,13 +29,13 @@ Route::middleware(['auth', 'restrict.user'])->group(function(){
     Route::get('/admin/tambahPelatih', [adminController::class, 'tambahPelatih'])->name('tambah.pelatih');
     Route::post('/admin/simpanPelatihBaru', [adminController::class, 'simpanPelatihBaru'])->name('simpan.pelatihBaru');
     Route::post('/admin/hapusPelatih', [adminController::class, 'hapusPelatih'])->name('hapus.pelatih');
-    Route::post('/admin/updatePelatih', [adminController::class, 'updatePelatih'])->name('update.pelatih');
+    Route::match(['GET','POST'],'/admin/updatePelatih', [adminController::class, 'updatePelatih'])->name('update.pelatih');
     Route::post('/admin/simpanUpdatePelatih', [adminController::class, 'simpanUpdatePelatih'])->name('simpan.update.pelatih');
     Route::get('/admin/dataAtlet', [adminController::class, 'dataAtlet'])->name('data.atlet');
     Route::get('/admin/tambahAtlet', [adminController::class, 'tambahAtlet'])->name('tambah.atlet');
     Route::post('/admin/simpanAtletBaru', [adminController::class, 'simpanAtletBaru'])->name('simpan.atletBaru');
     Route::post('/admin/hapusAtlet', [adminController::class, 'hapusAtlet'])->name('hapus.atlet');
-    Route::post('/admin/updateAtlet', [adminController::class, 'updateAtlet'])->name('update.atlet');
+    Route::match(['GET','POST'],'/admin/updateAtlet', [adminController::class, 'updateAtlet'])->name('update.atlet');
     Route::post('/admin/simpanUpdateAtlet', [adminController::class, 'simpanUpdateAtlet'])->name('simpan.update.atlet');
     Route::get('/admin/cabor', [adminController::class, 'cabor'])->name('cabor');
     Route::get('/admin/caborBaru', [adminController::class, 'caborBaru'])->name('cabor.baru');
@@ -49,6 +57,16 @@ Route::middleware(['auth', 'restrict.user'])->group(function(){
     Route::post('/admin/ubahJadwal', [adminController::class, 'ubahJadwal'])->name('ubah.jadwal');
     Route::post('/admin/simpanUbahJadwal', [adminController::class, 'simpanUbahJadwal'])->name('simpan.ubah.jadwal');
     Route::post('/admin/hapusJadwal', [adminController::class, 'hapusJadwal'])->name('hapus.jadwal');
+    // Dokumen (PDF/Gambar) untuk Atlet & Pelatih
+    Route::post('/admin/documents/uploadAtlet', [adminController::class, 'uploadDocumentsAtlet'])->name('documents.upload.atlet');
+    Route::post('/admin/documents/deleteAtlet', [adminController::class, 'deleteDocumentAtlet'])->name('documents.delete.atlet');
+    Route::post('/admin/documents/uploadPelatih', [adminController::class, 'uploadDocumentsPelatih'])->name('documents.upload.pelatih');
+    Route::post('/admin/documents/deletePelatih', [adminController::class, 'deleteDocumentPelatih'])->name('documents.delete.pelatih');
+    Route::get('/admin/documents/view/{id}', [adminController::class, 'viewDocument'])->name('documents.view');
+    // Verifikasi
+    Route::get('/admin/verifikasi', [adminController::class, 'verifikasi'])->name('verifikasi.index');
+    Route::post('/admin/verifikasi/approve', [adminController::class, 'verifikasiApprove'])->name('verifikasi.approve');
+    Route::post('/admin/verifikasi/reject', [adminController::class, 'verifikasiReject'])->name('verifikasi.reject');
     Route::get('/admin/user', [adminController::class, 'user'])->name('user');
     Route::get('/admin/tambahUser', [adminController::class, 'tambahUser'])->name('tambahUser');
     Route::post('/admin/simpanUserBaru', [adminController::class, 'simpanUser'])->name('simpanUser');
@@ -60,6 +78,13 @@ Route::middleware(['auth', 'restrict.user'])->group(function(){
     Route::post('/admin/importAtlet', [adminController::class, 'importAtletSubmit'])->name('import.atlet.submit');
     Route::get('/admin/importPelatih', [adminController::class, 'importPelatihForm'])->name('import.pelatih.form');
     Route::post('/admin/importPelatih', [adminController::class, 'importPelatihSubmit'])->name('import.pelatih.submit');
+    // Ajax endpoint: fetch nagari list for a kecamatan id
+    Route::get('/api/kecamatan/{id}/nagari', [\App\Http\Controllers\GeodataController::class, 'nagariByKecamatan'])->name('api.kecamatan.nagari');
+});
+
+// Pelatih: allow viewing streamed documents (PDF/images)
+Route::middleware(['pelatih'])->group(function(){
+    Route::get('/pelatih/documents/view/{id}', [adminController::class, 'viewDocument'])->name('pelatih.documents.view');
 });
 
 //Pelatih
@@ -71,9 +96,11 @@ Route::middleware('pelatih')->group(function(){
     Route::get('/pelatih/cabor', [pelatihController::class, 'cabor'])->name('cabor.pelatih');
     Route::get('/pelatih/lapangan', [pelatihController::class, 'lapangan'])->name('lapangan.pelatih');
     Route::get('/pelatih/asesmen', [pelatihController::class, 'asesmen'])->name('asesmen.pelatih');
+    Route::get('/pelatih/asesmen/export-csv', [pelatihController::class, 'exportAsesmenRekapCsv'])->name('pelatih.asesmen.export.csv');
     Route::get('/pelatih/tambahAsesmen', [pelatihController::class, 'tambahAsesmen'])->name('tambah.asesmen');
     Route::post('/pelatih/simpanAsesmen', [pelatihController::class, 'simpanAsesmen'])->name('simpan.asesmen');
     Route::get('/pelatih/absensi', [pelatihController::class, 'absensi'])->name('absensi.pelatih');
+    Route::get('/pelatih/absensi/export-csv', [pelatihController::class, 'exportAbsensiRekapCsv'])->name('pelatih.absensi.export.csv');
     Route::get('/pelatih/isiAbsensi', [pelatihController::class, 'isiAbsensi'])->name('pelatih.isiAbsensi');
     Route::post('/pelatih/simpanAbsensi', [pelatihController::class, 'simpanAbsensi'])->name('pelatih.simpanAbsensi');
     Route::get('/pelatih/ubahAbsensi', [pelatihController::class, 'ubahAbsensi'])->name('pelatih.ubahAbsensi');
@@ -96,6 +123,9 @@ Route::middleware('atlet')->group(function() {
     Route::get('/atlet/absensi', [atletController::class, 'absensi'])->name('atlet.absensi');
     Route::get('/atlet/jadwal', [atletController::class, 'jadwal'])->name('atlet.jadwal');
     Route::post('/atlet/notifikasi', [atletController::class, 'notifikasi'])->name('atlet.notifikasi');
+    // Atlet - Lihat Dokumen
+    Route::get('/atlet/dokumen', [atletController::class, 'dokumen'])->name('atlet.dokumen');
+    Route::get('/atlet/documents/view/{id}', [adminController::class, 'viewDocument'])->name('atlet.documents.view');
 });
 
 

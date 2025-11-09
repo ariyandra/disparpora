@@ -11,6 +11,8 @@ use App\Models\Absensi;
 use App\Models\Lapangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Document;
 
 class atletController extends Controller
 {
@@ -69,12 +71,12 @@ class atletController extends Controller
     }
 
     public function cabor(){
-        $dataCabor = Cabor::all();
+        $dataCabor = Cabor::where('status_verifikasi', 'approved')->get();
         return view('atlet.cabor', compact('dataCabor'));
     }
 
     public function lapangan(){
-        $dataLapangan = Lapangan::all();
+        $dataLapangan = Lapangan::where('status_verifikasi', 'approved')->get();
         return view('atlet.lapangan', compact('dataLapangan'));
     }
 
@@ -89,7 +91,7 @@ class atletController extends Controller
     }
 
     public function jadwal(){
-        $dataJadwal = Jadwal::all();
+        $dataJadwal = Jadwal::where('status_verifikasi', 'approved')->get();
         return view('atlet.jadwal', compact('dataJadwal'));
     }
 
@@ -103,5 +105,14 @@ class atletController extends Controller
         $update = Notif::whereIn('id', $notifs['notif_id'])->update(['is_read' => true]);
 
         return redirect()->back();
+    }
+
+    public function dokumen()
+    {
+        $me = Auth::guard('atlet')->user();
+        if(!$me){ return redirect()->route('login.atlet'); }
+        $atlet = Atlet::find($me->id);
+        $docs = $atlet ? $atlet->documents()->latest()->get() : collect();
+        return view('Atlet.dokumen', compact('me','docs'));
     }
 }

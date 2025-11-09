@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah Atlet - Dinas Pariwisata Pemuda dan Olahraga</title>
+    <title>Update Atlet - Dinas Pariwisata Pemuda dan Olahraga</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/pelatih.css') }}" rel="stylesheet">
@@ -57,7 +57,6 @@
 
     <main class="main-content">
         <div class="page-container mt-32 sm:mt-40">
-            <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
                     <h1 class="page-title">Update Data Atlet</h1>
@@ -67,7 +66,6 @@
                 </div>
             </div>
             
-            <!-- Form Container Card -->
             <div class="table-container-card">
                 <div class="table-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                     <h2 class="table-title">Form Data Atlet</h2>
@@ -75,13 +73,13 @@
                 
                 <form id="atletForm" action="{{ route('simpan.update.atlet') }}" method="POST" enctype="multipart/form-data" style="margin-top: 30px;">
                     @csrf
+                    
+                    <input type="hidden" name="id_atlet" value="{{ $atlet->id }}">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; position: relative;">
                         
-                        <!-- Decorative Elements -->
                         <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         <div style="position: absolute; bottom: -30px; left: -30px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(238, 90, 82, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         
-                        <!-- Nama -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="nama" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -98,7 +96,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Email -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="email" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -115,23 +112,20 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
                         
-                        <!-- Password -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="password" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🔒 Password <span style="color: #ff6b6b;">*</span>
+                                🔒 Password (opsional)
                             </label>
                             <input type="password" 
                                    id="password" 
                                    name="password" 
-                                   required
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                   placeholder="Minimal 8 karakter"
+                                   placeholder="Kosongkan jika tidak ingin mengubah"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Jenis Kelamin -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="jenis_kelamin" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -144,12 +138,11 @@
                                     onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Jenis Kelamin</option>
-                                <option value="Laki-laki">Laki-laki</option>
-                                <option value="Perempuan">Perempuan</option>
+                                <option value="Laki-laki" {{ $atlet->jenis_kelamin == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                <option value="Perempuan" {{ $atlet->jenis_kelamin == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                             </select>
                         </div>
 
-                        <!-- No HP -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="no_hp" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -166,7 +159,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Cabor -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="cabor" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -180,12 +172,11 @@
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Jenis Cabor</option>
                                 @foreach ($dataCabor as $cabor)
-                                    <option value="{{ $cabor->id }}">{{ $cabor->nama_cabor }}</option>
+                                    <option value="{{ $cabor->id }}" {{ $atlet->id_cabor == $cabor->id ? 'selected' : '' }}>{{ $cabor->nama_cabor }}</option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Tanggal Lahir -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="tanggal_lahir" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -201,7 +192,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Tanggal Gabung -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="tanggal_gabung" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -217,7 +207,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- status -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="status" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -226,17 +215,15 @@
                             <select id="status" 
                                     name="status" 
                                     required
-                                    value="{{ $atlet->status }}"
                                     style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
                                     onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Status</option>
-                                <option value="Aktif">Aktif</option>
-                                <option value="Tidak Aktif">Tidak Aktif</option>
+                                <option value="Aktif" {{ $atlet->status == 'Aktif' ? 'selected' : '' }}>Aktif</option>
+                                <option value="Tidak Aktif" {{ $atlet->status == 'Tidak Aktif' ? 'selected' : '' }}>Tidak Aktif</option>
                             </select>
                         </div>
 
-                        <!-- foto -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="foto" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -247,9 +234,42 @@
                                     <p style="font-size:12px;color:#666;margin-top:8px;">Foto saat ini: <a href="{{ asset('storage/' . $atlet->foto) }}" target="_blank">Lihat</a></p>
                                 @endif
                         </div>
+                        
+                        <div style="grid-column: 1 / -1; padding:16px; border:1px solid #e5e7eb; border-radius:12px; background:#fafafa;">
+                            <h3 style="font-weight:600; margin-bottom:10px;">📄 Dokumen Atlet (PDF/Gambar)</h3>
+                            <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                @csrf
+                                <input type="hidden" name="atlet_id" value="{{ $atlet->id }}" form="uploadAtletForm">
+                                <input type="text" name="kategori" placeholder="Kategori (mis: Lisensi, Piagam, Sertifikat)" style="flex:1; min-width:240px; padding:10px; border:1px solid #e5e7eb; border-radius:8px;" form="uploadAtletForm">
+                                <input type="file" name="files[]" multiple accept=".pdf,image/*" style="padding:8px;" form="uploadAtletForm">
+                                <button type="submit" class="btn-tambah" style="padding:10px 16px;" form="uploadAtletForm">Unggah</button>
+                            </div>
+                            <!-- hidden upload form moved below to avoid nested forms -->
+                            @php($docs = $atlet->documents ?? collect())
+                            @if($docs->count())
+                                <div style="margin-top:12px; display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px;">
+                                    @foreach($docs as $doc)
+                                        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                            <div>
+                                                <div style="font-size:14px; font-weight:600;">{{ $doc->kategori ?? 'Dokumen' }}</div>
+                                                <div style="font-size:12px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">
+                                                    <a href="{{ route('documents.view', $doc->id) }}" target="_blank">{{ $doc->original_name }}</a>
+                                                </div>
+                                            </div>
+                                            <form action="{{ route('documents.delete.atlet') }}" method="POST" onsubmit="return confirm('Hapus dokumen ini?')">
+                                                @csrf
+                                                <input type="hidden" name="document_id" value="{{ $doc->id }}">
+                                                <button type="submit" class="btn-action btn-delete" style="padding:6px 10px;">Hapus</button>
+                                            </form>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p style="margin-top:8px; font-size:13px; color:#666;">Belum ada dokumen.</p>
+                            @endif
+                        </div>
                     </div>
-                    <!-- Form Actions -->
-                    <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 2px solid #f0f0f0; position: relative;">
+                    <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 2px solid #f0f0f0; position: relative; z-index: 10;">
                         <div style="position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 60px; height: 2px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 1px;"></div>
                         <a href="{{ route('data.atlet') }}" 
                            style="padding: 12px 24px; border: 2px solid #e0e0e0; background: white; border-radius: 25px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; text-decoration: none; color: #666; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);"
@@ -298,18 +318,13 @@
             // Add focus effects to form fields
             const formFields = document.querySelectorAll('input, select');
             formFields.forEach(field => {
-                const indicator = field.closest('div').querySelector('.field-indicator');
-                
+                const container = field.closest('div');
+                const indicator = container ? container.querySelector('.field-indicator') : null;
                 field.addEventListener('focus', function() {
-                    if (indicator) {
-                        indicator.style.opacity = '1';
-                    }
+                    if (indicator) { indicator.style.opacity = '1'; }
                 });
-                
                 field.addEventListener('blur', function() {
-                    if (indicator) {
-                        indicator.style.opacity = '0';
-                    }
+                    if (indicator) { indicator.style.opacity = '0'; }
                 });
             });
 
@@ -325,19 +340,22 @@
                 }, index * 100);
             });
 
-            // Set default tanggal gabung to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tanggal_gabung').value = today;
+            // Set default tanggal gabung to today (dihapus/dinonaktifkan karena sudah menggunakan nilai $atlet->tanggal_gabung)
+            // const today = new Date().toISOString().split('T')[0];
+            // document.getElementById('tanggal_gabung').value = today;
         });
+
+        // FIX JS ERROR: Tambahkan pengecekan null sebelum memanipulasi elemen notifikasi
         function toggleNotifications() {
             const dropdown = document.getElementById('notificationDropdown');
+            if (!dropdown) return;
+            
             const isVisible = dropdown.style.display !== 'none';
             
             if (isVisible) {
                 dropdown.style.display = 'none';
             } else {
                 dropdown.style.display = 'block';
-                // Add animation
                 dropdown.style.opacity = '0';
                 dropdown.style.transform = 'translateY(-10px)';
                 setTimeout(() => {
@@ -351,15 +369,17 @@
         function markAllAsRead() {
             const badge = document.getElementById('notificationBadge');
             const bell = document.getElementById('notificationBell');
+            const dropdown = document.getElementById('notificationDropdown');
             const items = document.querySelectorAll('.notification-item');
             
-            // Hide badge
-            badge.style.display = 'none';
+            if (badge) {
+                 badge.style.display = 'none';
+            }
             
-            // Change bell to read state
-            bell.textContent = '🔕';
+            if (bell) {
+                bell.textContent = '🔕';
+            }
             
-            // Mark all items as read (remove colored dots)
             items.forEach(item => {
                 const dot = item.querySelector('div > div');
                 if (dot) {
@@ -367,22 +387,24 @@
                 }
             });
             
-            // Show success message
-            const dropdown = document.getElementById('notificationDropdown');
-            const successMsg = document.createElement('div');
-            successMsg.innerHTML = '<div style="padding: 12px; text-align: center; color: #4CAF50; font-size: 14px; font-weight: 500;">✓ Semua notifikasi telah dibaca</div>';
-            dropdown.appendChild(successMsg);
-            
-            setTimeout(() => {
-                successMsg.remove();
-                dropdown.style.display = 'none';
-            }, 2000);
+            if (dropdown) {
+                const successMsg = document.createElement('div');
+                successMsg.innerHTML = '<div style="padding: 12px; text-align: center; color: #4CAF50; font-size: 14px; font-weight: 500;">✓ Semua notifikasi telah dibaca</div>';
+                dropdown.appendChild(successMsg);
+                
+                setTimeout(() => {
+                    successMsg.remove();
+                    dropdown.style.display = 'none';
+                }, 2000);
+            }
         }
 
         // Close notification dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const notificationContainer = document.querySelector('.notification-container');
             const dropdown = document.getElementById('notificationDropdown');
+            
+            if (!notificationContainer || !dropdown) return;
             
             if (!notificationContainer.contains(event.target)) {
                 dropdown.style.display = 'none';
@@ -394,11 +416,13 @@
             const bell = document.getElementById('notificationBell');
             const badge = document.getElementById('notificationBadge');
             
-            if (badge.style.display !== 'none') {
-                bell.style.animation = 'bellShake 0.5s ease-in-out';
-                setTimeout(() => {
-                    bell.style.animation = '';
-                }, 500);
+            if (badge && bell) {
+                if (badge.style.display !== 'none') {
+                    bell.style.animation = 'bellShake 0.5s ease-in-out';
+                    setTimeout(() => {
+                        bell.style.animation = '';
+                    }, 500);
+                }
             }
         }, 5000);
 
@@ -418,5 +442,23 @@
         `;
         document.head.appendChild(bellStyle);
     </script>
-</body>
+    <script>
+        // Force-submit the main form when Simpan Data is clicked (fallback if default submit is blocked)
+        document.addEventListener('DOMContentLoaded', function(){
+            var saveBtn = document.getElementById('submitBtn');
+            var form = document.getElementById('atletForm');
+            if(saveBtn && form){
+                saveBtn.addEventListener('click', function(){
+                    // if somehow not submitted by default, submit explicitly
+                    try { form.submit(); } catch(e) {}
+                });
+            }
+        });
+    </script>
+    
+    <!-- Hidden upload form for Atlet (placed outside main form to avoid nesting) -->
+    <form id="uploadAtletForm" action="{{ route('documents.upload.atlet') }}" method="POST" enctype="multipart/form-data" style="display:none;">
+        @csrf
+    </form>
+  </body>
 </html>

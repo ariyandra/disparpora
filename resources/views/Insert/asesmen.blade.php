@@ -55,7 +55,7 @@
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
                     <h1 class="page-title">Tambah Asesmen</h1>
-                    <a href="" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
+                    <a href="{{ route('asesmen.pelatih') }}" class="btn-tambah" style="background: linear-gradient(135deg, #6b7280, #4b5563); text-decoration: none;">
                         <span>←</span> Kembali
                     </a>
                 </div>
@@ -67,7 +67,7 @@
                     <h2 class="table-title">Form Data Asesmen</h2>
                 </div>
                 
-                <form action="{{ route('simpan.asesmen') }}" method="POST" style="margin-top: 30px;">
+                <form id="asesmenForm" action="{{ route('simpan.asesmen') }}" method="POST" style="margin-top: 30px;">
                     @csrf
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; position: relative;">
                         
@@ -103,6 +103,7 @@
                             <input type="date" 
                                    id="tanggal" 
                                    name="tanggal" 
+                                   value="{{ date('Y-m-d') }}"
                                    required
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
@@ -113,63 +114,42 @@
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="aspek_fisik" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                💪 Aspek Fisik <span style="color: #ff6b6b;">*</span>
+                                💪 Aspek Fisik (0-100) <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <select id="aspek_fisik" 
-                                    name="aspek_fisik" 
-                                    required
-                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
-                                <option value="">Pilih Nilai Aspek Fisik</option>
-                                <option value="A">A - Sangat Baik</option>
-                                <option value="B">B - Baik</option>
-                                <option value="C">C - Cukup</option>
-                                <option value="D">D - Kurang</option>
-                                <option value="E">E - Sangat Kurang</option>
-                            </select>
+                            <input type="number" id="aspek_fisik" name="aspek_fisik" min="0" max="100" step="1" required onwheel="this.blur()"
+                                   oninput="if(this.value===''){return;} this.value = Math.max(0, Math.min(100, parseInt(this.value)||0));"
+                                   placeholder="Masukkan nilai 0-100"
+                                   style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
+                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                                   onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
                         <!-- Aspek Teknik -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="aspek_teknik" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                ⚙️ Aspek Teknik <span style="color: #ff6b6b;">*</span>
+                                ⚙️ Aspek Teknik (0-100) <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <select id="aspek_teknik" 
-                                    name="aspek_teknik" 
-                                    required
-                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
-                                <option value="">Pilih Nilai Aspek Teknik</option>
-                                <option value="A">A - Sangat Baik</option>
-                                <option value="B">B - Baik</option>
-                                <option value="C">C - Cukup</option>
-                                <option value="D">D - Kurang</option>
-                                <option value="E">E - Sangat Kurang</option>
-                            </select>
+                            <input type="number" id="aspek_teknik" name="aspek_teknik" min="0" max="100" step="1" required onwheel="this.blur()"
+                                   oninput="if(this.value===''){return;} this.value = Math.max(0, Math.min(100, parseInt(this.value)||0));"
+                                   placeholder="Masukkan nilai 0-100"
+                                   style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
+                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                                   onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
                         <!-- Aspek Sikap -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="aspek_sikap" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🎯 Aspek Sikap <span style="color: #ff6b6b;">*</span>
+                                🎯 Aspek Sikap (0-100) <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <select id="aspek_sikap" 
-                                    name="aspek_sikap" 
-                                    required
-                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
-                                <option value="">Pilih Nilai Aspek Sikap</option>
-                                <option value="A">A - Sangat Baik</option>
-                                <option value="B">B - Baik</option>
-                                <option value="C">C - Cukup</option>
-                                <option value="D">D - Kurang</option>
-                                <option value="E">E - Sangat Kurang</option>
-                            </select>
+                            <input type="number" id="aspek_sikap" name="aspek_sikap" min="0" max="100" step="1" required onwheel="this.blur()"
+                                   oninput="if(this.value===''){return;} this.value = Math.max(0, Math.min(100, parseInt(this.value)||0));"
+                                   placeholder="Masukkan nilai 0-100"
+                                   style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
+                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                                   onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
                         <!-- Catatan -->
@@ -211,26 +191,6 @@
     </main>
 
     <script>
-        // Form submission
-        document.getElementById('asesmenForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerHTML;
-            
-            // Show loading state
-            submitBtn.innerHTML = '<span class="loading"></span> Menyimpan...';
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.7';
-            submitBtn.style.cursor = 'not-allowed';
-            
-            // Simulate form submission
-            setTimeout(() => {
-                alert('Data asesmen berhasil disimpan!');
-                window.location.href = '';
-            }, 1500);
-        });
-
         // Enhanced form interactions
         document.addEventListener('DOMContentLoaded', function() {
             // Add focus effects to form fields

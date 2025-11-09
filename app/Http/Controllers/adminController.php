@@ -13,9 +13,12 @@ use App\Models\Pelatih;
 use App\Models\User;
 use App\Models\Kecamatan;
 use App\Models\Nagari;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AtletImport;
 use App\Imports\PelatihImport;
@@ -31,31 +34,6 @@ class adminController extends Controller
         $lapanganQuery = Lapangan::query();
         $caborQuery = Cabor::query();
 
-        // Filter based on user role
-        if ($user->role == 2) { // Kecamatan
-            $atletQuery->where('kecamatan_id', $user->kecamatan_id);
-            $pelatihQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('kecamatan_id', $user->kecamatan_id);
-            });
-            $lapanganQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('kecamatan_id', $user->kecamatan_id);
-            });
-            $caborQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('kecamatan_id', $user->kecamatan_id);
-            });
-        } elseif ($user->role == 3) { // Nagari
-            $atletQuery->where('nagari_id', $user->nagari_id);
-            $pelatihQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('nagari_id', $user->nagari_id);
-            });
-            $lapanganQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('nagari_id', $user->nagari_id);
-            });
-            $caborQuery->whereHas('created_by', function($q) use($user) {
-                $q->where('nagari_id', $user->nagari_id);
-            });
-        }
-
         $jml_atlit = $atletQuery->count();
         $jml_pelatih = $pelatihQuery->count();
         $jml_lapangan = $lapanganQuery->count();
@@ -65,15 +43,94 @@ class adminController extends Controller
         return view('pegawai.dashboard', compact('jml_atlit', 'jml_pelatih', 'jml_lapangan', 'jml_cabor', 'notif'));
     }
 
+    // Verifikasi: daftar dan aksi
+    public function verifikasi(){
+        $user = auth()->user();
+        if (!in_array($user->role, [0,1,2])){
+            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke halaman verifikasi.');
+        }
+        $targetStatus = ($user->role == 2) ? 'pending_kecamatan' : 'pending_admin';
+        $atlets = Atlet::where('status_verifikasi', $targetStatus)->get();
+        $pelatihs = Pelatih::where('status_verifikasi', $targetStatus)->get();
+        $cabors = Cabor::where('status_verifikasi', $targetStatus)->get();
+        $lapangans = Lapangan::where('status_verifikasi', $targetStatus)->get();
+        $jadwals = Jadwal::where('status_verifikasi', $targetStatus)->get();
+        return view('pegawai.verifikasi', compact('atlets','pelatihs','cabors','lapangans','jadwals','targetStatus'));
+    }
+
+    public function verifikasiApprove(Request $request){
+        $validate = Validator::make($request->all(), [
+            'entity' => 'required|in:atlets,pelatihs,cabors,lapangans,jadwals',
+            'id' => 'required|integer'
+        ]);
+        if($validate->fails()) return redirect()->back()->with('error','Data tidak valid');
+        $user = auth()->user();
+        $entity = $request->entity; $id = $request->id;
+        $modelMap = [
+            'atlets' => Atlet::class,
+            'pelatihs' => Pelatih::class,
+            'cabors' => Cabor::class,
+            'lapangans' => Lapangan::class,
+            'jadwals' => Jadwal::class,
+        ];
+        $model = $modelMap[$entity]::find($id);
+        if(!$model) return redirect()->back()->with('error','Data tidak ditemukan');
+        // If Kecamatan approves pending_kecamatan, escalate to pending_admin; if Admin approves pending_admin -> approved
+        if ($user->role == 2 && $model->status_verifikasi === 'pending_kecamatan'){
+            $model->status_verifikasi = 'pending_admin';
+        } elseif (in_array($user->role, [0,1]) && $model->status_verifikasi === 'pending_admin'){
+            $model->status_verifikasi = 'approved';
+            $model->verified_by = $user->id;
+            $model->verified_at = now();
+        } else {
+            return redirect()->back()->with('error','Status tidak sesuai untuk disetujui');
+        }
+        $model->rejection_reason = null;
+        $model->save();
+        return redirect()->back()->with('success','Data berhasil diverifikasi');
+    }
+
+    public function verifikasiReject(Request $request){
+        $validate = Validator::make($request->all(), [
+            'entity' => 'required|in:atlets,pelatihs,cabors,lapangans,jadwals',
+            'id' => 'required|integer',
+            'reason' => 'nullable|string'
+        ]);
+        if($validate->fails()) return redirect()->back()->with('error','Data tidak valid');
+        $user = auth()->user();
+        if (!in_array($user->role, [0,1,2])) return redirect()->back()->with('error','Tidak berwenang');
+        $entity = $request->entity; $id=$request->id; $reason=$request->reason;
+        $modelMap = [
+            'atlets' => Atlet::class,
+            'pelatihs' => Pelatih::class,
+            'cabors' => Cabor::class,
+            'lapangans' => Lapangan::class,
+            'jadwals' => Jadwal::class,
+        ];
+        $model = $modelMap[$entity]::find($id);
+        if(!$model) return redirect()->back()->with('error','Data tidak ditemukan');
+        $model->status_verifikasi = 'rejected';
+        $model->rejection_reason = $reason;
+        $model->save();
+        return redirect()->back()->with('success','Data berhasil ditolak');
+    }
+
     public function pagePelatih(){
         $user = auth()->user();
-        $query = Pelatih::query();
+        $query = Pelatih::with('documents');
 
-        // User biasa tidak bisa akses, yang lain bisa akses semua
-        if ($user->role == 5) { // User biasa
-            $dataPelatih = [];
-        } else { // Admin, petugas, kecamatan, dan nagari bisa lihat semua
+        // Admin/Pegawai (0/1) lihat semua; Kecamatan/Nagari (2/3) hanya yang dibuat sendiri
+        if ($user->role == 0 || $user->role == 1) {
             $dataPelatih = $query->get();
+        } elseif ($user->role == 2) { // Kecamatan: lihat buatan sendiri + pending_kecamatan
+            $dataPelatih = $query->where(function($q) use ($user){
+                $q->where('created_by', $user->id)
+                  ->orWhere('status_verifikasi', 'pending_kecamatan');
+            })->get();
+        } elseif ($user->role == 3) { // Nagari: hanya buatan sendiri
+            $dataPelatih = $query->where('created_by', $user->id)->get();
+        } else {
+            $dataPelatih = $query->where('status_verifikasi', 'approved')->get();
         }
 
         return view('pegawai.pelatih', compact('dataPelatih'));
@@ -120,6 +177,16 @@ class adminController extends Controller
         $pelatih->tanggal_gabung = $data['tanggal_gabung'];
         $pelatih->status = $data['status'];
         $pelatih->created_by = $user->id;
+        // verification pipeline
+        if ($user->role == 3) { // Nagari
+            $pelatih->status_verifikasi = 'pending_kecamatan';
+        } elseif ($user->role == 2) { // Kecamatan
+            $pelatih->status_verifikasi = 'pending_admin';
+        } else { // Admin/Pegawai
+            $pelatih->status_verifikasi = 'approved';
+            $pelatih->verified_by = $user->id;
+            $pelatih->verified_at = now();
+        }
 
         // Set kecamatan_id and nagari_id if the user is from kecamatan or nagari
         if ($user->role == 2) { // Kecamatan
@@ -175,91 +242,80 @@ class adminController extends Controller
     }
 
     public function simpanUpdatePelatih(Request $request){
-    
-    // 1. REVISI VALIDASI: Tambahkan 'password' => 'nullable|string|min:8'
-    $validate = Validator::make($request->all(), [
-        'id_pelatih' => 'required|exists:pelatihs,id',
-        'nama' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
-        'password' => 'nullable|string|min:8', // <--- DIBUAT NULLABLE
-        'jenis_kelamin' => 'required|string|max:10',
-        'no_hp' => 'required|string|max:15',
-        'cabor' => 'required|exists:cabors,id',
-        'tanggal_lahir' => 'required|date',
-        'tanggal_gabung' => 'required|date',
-        'status' => 'required|string|max:20'
-    ]);
-    
-    if($validate->fails()){
-        return redirect()->route('data.pelatih')->with('error', 'Gagal menyimpan data, silakan periksa kembali inputan Anda.');
-    }
-
-    $data = $validate->validated();
-
-    // Pengecekan Email Exist (Logika ini sudah benar)
-    $emailExist = Pelatih::where('email', $data['email'])
-                        ->where('id', '!=', $data['id_pelatih'])
-                        ->exists();
-
-    if($emailExist){
-        return redirect()->route('data.pelatih')->with('error', 'Email sudah terdaftar, gunakan email lain');
-    }
-    
-    $pelatih = Pelatih::findOrFail($data['id_pelatih']);
-    
-    // 2. HAPUS BARIS INI: $pelatih->password = Pelatih::findOrFail($data['id_pelatih'])->password;
-    // Baris ini tidak diperlukan dan berpotensi menimpa password baru jika ada.
-
-    $pelatih->nama = $data['nama'];
-    $pelatih->email = $data['email'];
-    
-    // 3. LOGIKA UPDATE PASSWORD: Hanya update jika ada input password baru
-    if(isset($data['password']) && $data['password']){
-        $pelatih->password = bcrypt($data['password']);
-    }
-    // Jika tidak ada password baru, kolom password tidak akan disentuh, sehingga tetap menggunakan password lama.
-    
-    $pelatih->jenis_kelamin = $data['jenis_kelamin'];
-    $pelatih->no_telp = $data['no_hp']; // Perhatikan: di form Anda 'no_hp', di DB 'no_telp'
-    $pelatih->id_cabor = $data['cabor'];
-    $pelatih->tanggal_lahir = $data['tanggal_lahir'];
-    $pelatih->tanggal_gabung = $data['tanggal_gabung'];
-    $pelatih->status = $data['status'];
-
-    // 4. PENANGANAN FOTO (Logika ini SUDAH BENAR)
-    // Logika ini sudah benar karena menghapus foto lama di disk('public')
-    // dan menyimpan path baru di kolom 'foto'.
-
-    if($request->hasFile('foto')){
-        // delete old foto if exists
-        if(!empty($pelatih->foto) && Storage::disk('public')->exists($pelatih->foto)){
-            Storage::disk('public')->delete($pelatih->foto);
+        
+        $validate = Validator::make($request->all(), [
+            'id_pelatih' => 'required|exists:pelatihs,id',
+            'nama' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'jenis_kelamin' => 'required|string|max:10',
+            'no_hp' => 'required|string|max:15',
+            'cabor' => 'required|exists:cabors,id',
+            'tanggal_lahir' => 'required|date',
+            'tanggal_gabung' => 'required|date',
+            'status' => 'required|string|max:20'
+        ]);
+        
+        if($validate->fails()){
+            return redirect()->route('data.pelatih')->with('error', 'Gagal menyimpan data, silakan periksa kembali inputan Anda.');
         }
-        $path = $request->file('foto')->store('pelatih', 'public');
-        $pelatih->foto = $path;
+
+        $data = $validate->validated();
+        $emailExist = Pelatih::where('email', $data['email'])
+                    ->where('id', '!=', $data['id_pelatih'])
+                    ->exists();
+
+        if($emailExist){
+            return redirect()->route('data.pelatih')->with('error', 'Email sudah terdaftar, gunakan email lain');
+        }
+        
+        $pelatih = Pelatih::findOrFail($data['id_pelatih']);
+        $pelatih->nama = $data['nama'];
+        $pelatih->email = $data['email'];
+        $pelatih->password = Pelatih::findOrFail($data['id_pelatih'])->password;
+        $pelatih->jenis_kelamin = $data['jenis_kelamin'];
+        $pelatih->no_telp = $data['no_hp'];
+        $pelatih->id_cabor = $data['cabor'];
+        $pelatih->tanggal_lahir = $data['tanggal_lahir'];
+        $pelatih->tanggal_gabung = $data['tanggal_gabung'];
+        $pelatih->status = $data['status'];
+
+        if($request->hasFile('foto')){
+            // delete old foto if exists
+            if(!empty($pelatih->foto) && Storage::disk('public')->exists($pelatih->foto)){
+                Storage::disk('public')->delete($pelatih->foto);
+            }
+            $path = $request->file('foto')->store('pelatih', 'public');
+            $pelatih->foto = $path;
+        }
+
+        $simpan = $pelatih->save();
+
+        if(!$simpan){
+            return redirect()->route('update.pelatih')->with('error', 'Gagal menyimpan data, silakan periksa kembali inputan Anda.');
+        }
+
+        $notif = new Notif();
+        $pegawai = auth()->user()->nama;
+        $notif->keterangan = 'Pegawai (' . $pegawai . ') mengubah data pelatih: ' . $data['nama'];
+        $notif->kategori = 'anggota';
+        $notif->save();
+        return redirect()->route('data.pelatih')->with('success', 'Data pelatih berhasil diperbarui.');
     }
-
-    $simpan = $pelatih->save();
-
-    // ... (Logika notifikasi dan redirect) ...
-    
-    if(!$simpan){
-        return redirect()->route('update.pelatih')->with('error', 'Gagal menyimpan data, silakan periksa kembali inputan Anda.');
-    }
-
-    // ... (Logika notifikasi dan redirect sukses) ...
-    return redirect()->route('data.pelatih')->with('success', 'Data pelatih berhasil diperbarui.');
-}
 
     public function dataAtlet(){
         $user = auth()->user();
-        $query = Atlet::query();
-
-        // User biasa tidak bisa akses, yang lain bisa akses semua
-        if ($user->role == 5) { // User biasa
-            $dataAtlet = [];
-        } else { // Admin, petugas, kecamatan, dan nagari bisa lihat semua
+        $query = Atlet::with('documents');
+        if ($user->role == 0 || $user->role == 1) {
             $dataAtlet = $query->get();
+        } elseif ($user->role == 2) { // Kecamatan
+            $dataAtlet = $query->where(function($q) use ($user){
+                $q->where('created_by', $user->id)
+                  ->orWhere('status_verifikasi', 'pending_kecamatan');
+            })->get();
+        } elseif ($user->role == 3) { // Nagari
+            $dataAtlet = $query->where('created_by', $user->id)->get();
+        } else {
+            $dataAtlet = $query->where('status_verifikasi', 'approved')->get();
         }
 
         return view('pegawai.atlet', compact('dataAtlet'));
@@ -296,6 +352,7 @@ class adminController extends Controller
         }
 
         $data = $validate->validated();
+        $user = auth()->user();
         $atlet = new Atlet();
 
         $atlet->nama = $data['nama'];
@@ -307,6 +364,16 @@ class adminController extends Controller
         $atlet->tanggal_lahir = $data['tanggal_lahir'];
         $atlet->tanggal_gabung = $data['tanggal_gabung'];
         $atlet->status = $data['status'];
+        $atlet->created_by = $user->id;
+        if ($user->role == 3) {
+            $atlet->status_verifikasi = 'pending_kecamatan';
+        } elseif ($user->role == 2) {
+            $atlet->status_verifikasi = 'pending_admin';
+        } else {
+            $atlet->status_verifikasi = 'approved';
+            $atlet->verified_by = $user->id;
+            $atlet->verified_at = now();
+        }
         // handle foto upload
         if($request->hasFile('foto')){
             $path = $request->file('foto')->store('atlets', 'public');
@@ -431,12 +498,17 @@ class adminController extends Controller
     public function cabor(){
         $user = auth()->user();
         $query = Cabor::query();
-
-        // User biasa tidak bisa akses, yang lain bisa akses semua
-        if ($user->role == 5) { // User biasa
-            $dataCabor = [];
-        } else { // Admin, petugas, kecamatan, dan nagari bisa lihat semua
+        if ($user->role == 0 || $user->role == 1) {
             $dataCabor = $query->get();
+        } elseif ($user->role == 2) {
+            $dataCabor = $query->where(function($q) use ($user){
+                $q->where('created_by', $user->id)
+                  ->orWhere('status_verifikasi', 'pending_kecamatan');
+            })->get();
+        } elseif ($user->role == 3) {
+            $dataCabor = $query->where('created_by', $user->id)->get();
+        } else {
+            $dataCabor = $query->where('status_verifikasi', 'approved')->get();
         }
 
         return view('pegawai.cabor', compact('dataCabor'));
@@ -462,6 +534,15 @@ class adminController extends Controller
         $cabor->nama_cabor = $data['nama_cabor'];
         $cabor->deskripsi = $data['deskripsi'];
         $cabor->created_by = $user->id;
+        if ($user->role == 3) {
+            $cabor->status_verifikasi = 'pending_kecamatan';
+        } elseif ($user->role == 2) {
+            $cabor->status_verifikasi = 'pending_admin';
+        } else {
+            $cabor->status_verifikasi = 'approved';
+            $cabor->verified_by = $user->id;
+            $cabor->verified_at = now();
+        }
         
         // Set kecamatan_id and nagari_id if the user is from kecamatan or nagari
         if ($user->role == 2) { // Kecamatan
@@ -552,12 +633,17 @@ class adminController extends Controller
     public function lapangan(){
         $user = auth()->user();
         $query = Lapangan::query();
-
-        // User biasa tidak bisa akses, yang lain bisa akses semua
-        if ($user->role == 5) { // User biasa
-            $dataLapangan = [];
-        } else { // Admin, petugas, kecamatan, dan nagari bisa lihat semua
+        if ($user->role == 0 || $user->role == 1) {
             $dataLapangan = $query->get();
+        } elseif ($user->role == 2) {
+            $dataLapangan = $query->where(function($q) use ($user){
+                $q->where('created_by', $user->id)
+                  ->orWhere('status_verifikasi', 'pending_kecamatan');
+            })->get();
+        } elseif ($user->role == 3) {
+            $dataLapangan = $query->where('created_by', $user->id)->get();
+        } else {
+            $dataLapangan = $query->where('status_verifikasi', 'approved')->get();
         }
 
         return view('pegawai.lapangan', compact('dataLapangan'));
@@ -586,6 +672,19 @@ class adminController extends Controller
         $lapangan->id_cabor = $data['cabor'];
         $lapangan->lokasi = $data['lokasi'];
         $lapangan->deskripsi = $data['deskripsi'];
+        // verification attrs
+        $user = auth()->user();
+        $lapangan->created_by = $user->id;
+        if ($user->role == 3) {
+            $lapangan->status_verifikasi = 'pending_kecamatan';
+        } elseif ($user->role == 2) {
+            $lapangan->status_verifikasi = 'pending_admin';
+        } else {
+            $lapangan->status_verifikasi = 'approved';
+            $lapangan->verified_by = $user->id;
+            $lapangan->verified_at = now();
+        }
+
         $simpan = $lapangan->save();
 
         if(!$simpan){
@@ -685,12 +784,17 @@ class adminController extends Controller
     public function jadwal(){
         $user = auth()->user();
         $query = Jadwal::query();
-
-        // User biasa tidak bisa akses, yang lain bisa akses semua
-        if ($user->role == 5) { // User biasa
-            $dataJadwal = [];
-        } else { // Admin, petugas, kecamatan, dan nagari bisa lihat semua
+        if ($user->role == 0 || $user->role == 1) {
             $dataJadwal = $query->get();
+        } elseif ($user->role == 2) {
+            $dataJadwal = $query->where(function($q) use ($user){
+                $q->where('created_by', $user->id)
+                  ->orWhere('status_verifikasi', 'pending_kecamatan');
+            })->get();
+        } elseif ($user->role == 3) {
+            $dataJadwal = $query->where('created_by', $user->id)->get();
+        } else {
+            $dataJadwal = $query->where('status_verifikasi', 'approved')->get();
         }
 
         return view('pegawai.jadwal', compact('dataJadwal'));
@@ -700,6 +804,117 @@ class adminController extends Controller
         $dataCabor = Cabor::all();
         $dataLapangan = Lapangan::all();
         return view('insert.jadwal', compact('dataCabor', 'dataLapangan'));
+    }
+
+    // ======================
+    // Documents (Atlet/Pelatih)
+    // ======================
+    public function uploadDocumentsAtlet(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'atlet_id' => 'required|exists:atlets,id',
+            'kategori' => 'nullable|string|max:50',
+            'files' => 'required',
+            'files.*' => 'file|mimes:pdf,jpg,jpeg,png,webp|max:5120', // 5MB each
+        ]);
+        if($validate->fails()){
+            return redirect()->back()->with('error', 'File tidak valid. Pastikan format pdf/jpg/jpeg/png/webp dan ukuran <= 5MB.');
+        }
+        $user = auth()->user();
+        $atlet = Atlet::findOrFail($request->atlet_id);
+        foreach ($request->file('files') as $file){
+            $path = $file->store('documents/atlets/'.$atlet->id, 'public');
+            Document::create([
+                'documentable_type' => Atlet::class,
+                'documentable_id' => $atlet->id,
+                'kategori' => $request->kategori,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => $user ? $user->id : null,
+            ]);
+        }
+        return redirect()->back()->with('success', 'Dokumen atlet berhasil diunggah.');
+    }
+
+    public function deleteDocumentAtlet(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'document_id' => 'required|exists:documents,id',
+        ]);
+        if($validate->fails()){
+            return redirect()->back()->with('error', 'Dokumen tidak ditemukan.');
+        }
+        $doc = Document::findOrFail($request->document_id);
+        if(!empty($doc->path) && Storage::disk('public')->exists($doc->path)){
+            Storage::disk('public')->delete($doc->path);
+        }
+        $doc->delete();
+        return redirect()->back()->with('success', 'Dokumen berhasil dihapus.');
+    }
+
+    public function uploadDocumentsPelatih(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'pelatih_id' => 'required|exists:pelatihs,id',
+            'kategori' => 'nullable|string|max:50',
+            'files' => 'required',
+            'files.*' => 'file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
+        ]);
+        if($validate->fails()){
+            return redirect()->back()->with('error', 'File tidak valid. Pastikan format pdf/jpg/jpeg/png/webp dan ukuran <= 5MB.');
+        }
+        $user = auth()->user();
+        $pelatih = Pelatih::findOrFail($request->pelatih_id);
+        foreach ($request->file('files') as $file){
+            $path = $file->store('documents/pelatihs/'.$pelatih->id, 'public');
+            Document::create([
+                'documentable_type' => Pelatih::class,
+                'documentable_id' => $pelatih->id,
+                'kategori' => $request->kategori,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => $user ? $user->id : null,
+            ]);
+        }
+        return redirect()->back()->with('success', 'Dokumen pelatih berhasil diunggah.');
+    }
+
+    public function deleteDocumentPelatih(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'document_id' => 'required|exists:documents,id',
+        ]);
+        if($validate->fails()){
+            return redirect()->back()->with('error', 'Dokumen tidak ditemukan.');
+        }
+        $doc = Document::findOrFail($request->document_id);
+        if(!empty($doc->path) && Storage::disk('public')->exists($doc->path)){
+            Storage::disk('public')->delete($doc->path);
+        }
+        $doc->delete();
+        return redirect()->back()->with('success', 'Dokumen berhasil dihapus.');
+    }
+
+    // Stream document inline (PDF/images) with correct headers
+    public function viewDocument($id)
+    {
+        $doc = Document::findOrFail($id);
+        $disk = Storage::disk('public');
+        if(!$doc->path || !$disk->exists($doc->path)){
+            abort(404);
+        }
+        $fullPath = storage_path('app/public/'.$doc->path);
+        $mime = $doc->mime ?: mime_content_type($fullPath);
+        $headers = [
+            'Content-Type' => $mime,
+            // display inline in browser if possible (e.g., PDFs)
+            'Content-Disposition' => 'inline; filename="'.basename($doc->original_name).'"'
+        ];
+        return response()->file($fullPath, $headers);
     }
 
     public function simpanJadwal(Request $request){
@@ -726,7 +941,18 @@ class adminController extends Controller
         $jadwal->tanggal = $data['tanggal'];
         $jadwal->jam_mulai = $data['jam_mulai'];
         $jadwal->jam_selesai = $data['jam_selesai'];
-        $jadwal->keterangan = $data['keterangan'];
+        $jadwal->keterangan = $data['keterangan'] ?? '';
+        $user = auth()->user();
+        $jadwal->created_by = $user->id;
+        if ($user->role == 3) {
+            $jadwal->status_verifikasi = 'pending_kecamatan';
+        } elseif ($user->role == 2) {
+            $jadwal->status_verifikasi = 'pending_admin';
+        } else {
+            $jadwal->status_verifikasi = 'approved';
+            $jadwal->verified_by = $user->id;
+            $jadwal->verified_at = now();
+        }
         $simpan = $jadwal->save();
 
         if(!$simpan){
@@ -738,6 +964,26 @@ class adminController extends Controller
         $notif->keterangan = 'Pegawai (' . $pegawai . ') menambahkan data jadwal baru: ' . $data['tanggal'];
         $notif->kategori = 'jadwal';
         $notif->save();
+
+        // jika notif kategori jadwal, kirim email ke semua pengguna (User, Pelatih, Atlet)
+        if($notif->kategori === 'jadwal'){
+            try{
+                $emails = [];
+                $emails = array_merge($emails, User::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Pelatih::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Atlet::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_filter(array_unique($emails));
+                if(!empty($emails)){
+                    $dataMail = ['keterangan' => $notif->keterangan];
+                    Mail::send('emails.jadwal_notification', $dataMail, function($message) use ($emails){
+                        $message->to($emails);
+                        $message->subject('Pemberitahuan Jadwal Baru');
+                    });
+                }
+            } catch(\Exception $e){
+                Log::error('Gagal mengirim email notifikasi jadwal: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('jadwal')->with('success', 'Data jadwal berhasil disimpan.');
     }
@@ -780,7 +1026,7 @@ class adminController extends Controller
         $jadwal->tanggal = $data['tanggal'];
         $jadwal->jam_mulai = $data['jam_mulai'];
         $jadwal->jam_selesai = $data['jam_selesai'];
-        $jadwal->keterangan = $data['keterangan'];
+        $jadwal->keterangan = $data['keterangan'] ?? '';
         $simpan = $jadwal->save();
 
         if(!$simpan){
@@ -792,6 +1038,24 @@ class adminController extends Controller
         $notif->keterangan = 'Pegawai (' . $pegawai . ') mengubah data jadwal tanggal: ' . $data['tanggal'];
         $notif->kategori = 'jadwal';
         $notif->save();
+        if($notif->kategori === 'jadwal'){
+            try{
+                $emails = [];
+                $emails = array_merge($emails, User::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Pelatih::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Atlet::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_filter(array_unique($emails));
+                if(!empty($emails)){
+                    $dataMail = ['keterangan' => $notif->keterangan];
+                    Mail::send('emails.jadwal_notification', $dataMail, function($message) use ($emails){
+                        $message->to($emails);
+                        $message->subject('Perubahan Jadwal');
+                    });
+                }
+            } catch(\Exception $e){
+                Log::error('Gagal mengirim email notifikasi jadwal (ubah): ' . $e->getMessage());
+            }
+        }
         return redirect()->route('jadwal')->with('success', 'Data jadwal berhasil diubah.');
     }
 
@@ -816,187 +1080,241 @@ class adminController extends Controller
         $notif->keterangan = 'Pegawai (' . $pegawai . ') menghapus data jadwal tanggal: ' . $jadwal->tanggal;
         $notif->kategori = 'jadwal';
         $notif->save();
+        if($notif->kategori === 'jadwal'){
+            try{
+                $emails = [];
+                $emails = array_merge($emails, User::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Pelatih::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_merge($emails, Atlet::whereNotNull('email')->pluck('email')->toArray());
+                $emails = array_filter(array_unique($emails));
+                if(!empty($emails)){
+                    $dataMail = ['keterangan' => $notif->keterangan];
+                    Mail::send('emails.jadwal_notification', $dataMail, function($message) use ($emails){
+                        $message->to($emails);
+                        $message->subject('Penghapusan Jadwal');
+                    });
+                }
+            } catch(\Exception $e){
+                Log::error('Gagal mengirim email notifikasi jadwal (hapus): ' . $e->getMessage());
+            }
+        }
         return redirect()->route('jadwal')->with('success', 'Data jadwal berhasil dihapus.');
     }
 
-    public function user(){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke halaman ini.');
-        }
-        
-        $dataPegawai = User::all();
-        return view('pegawai.user', compact('dataPegawai'));
+public function user(){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke halaman ini.');
+    }
+    
+    $dataPegawai = User::all();
+    return view('pegawai.user', compact('dataPegawai'));
+}
+
+public function tambahUser(){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke halaman ini.');
     }
 
-    public function tambahUser(){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke halaman ini.');
-        }
+    $kecamatans = Kecamatan::all();
+    $nagaris = Nagari::all();
 
-        $kecamatans = Kecamatan::all();
-        $nagaris = Nagari::all();
-        return view('insert.user', compact('kecamatans', 'nagaris'));
+    // jika tabel kecamatan/nagari tidak diisi, fallback ke CSV/XLSX yang ditempatkan di folder csv/
+    if ($kecamatans->isEmpty() || $nagaris->isEmpty()) {
+        $csvData = $this->loadGeodataFromCsv();
+        $kecamatans = collect($csvData['kecamatans']);
+        $nagaris = collect($csvData['nagaris']);
     }
 
-    public function simpanUser(Request $request){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
-        }
+    return view('insert.user', compact('kecamatans', 'nagaris'));
+}
 
-        $validate = Validator::make($request->all(), [
-            'nama' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role' => 'required|in:0,1,2,3,4,5',
-            'kecamatan_id' => 'nullable|exists:kecamatans,id',
-            'nagari_id' => 'nullable|exists:nagaris,id'
-        ]);
+public function simpanUser(Request $request){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
+    }
 
-        if($validate->fails()){
-            return redirect()->back()->withErrors($validate)->withInput();
-        }
+    $validate = Validator::make($request->all(), [
+        'nama' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email',
+        'password' => 'required|string|min:8',
+        'role' => 'required|in:0,1,2,3,4,5',
+        // kecamatan_id / nagari_id may come from CSV fallback or non-numeric codes — resolve below
+        'kecamatan_id' => 'nullable',
+        'nagari_id' => 'nullable'
+    ]);
 
-        $data = $validate->validated();
+    if($validate->fails()){
+        return redirect()->back()->withErrors($validate)->withInput();
+    }
 
-        $user = new User();
-        $user->nama = $data['nama'];
-        $user->email = $data['email'];
+    $data = $validate->validated();
+
+    $user = new User();
+    $user->nama = $data['nama'];
+    $user->email = $data['email'];
+    $user->password = bcrypt($data['password']);
+    $user->role = $data['role'];
+    // assign area if role requires it
+    // resolve possibly non-numeric inputs (from CSV fallback) into DB ids
+    $resolvedKecId = null;
+    if ($data['role'] == 2 && isset($data['kecamatan_id']) && $data['kecamatan_id']) {
+        $resolvedKecId = $this->resolveKecamatanId($data['kecamatan_id']);
+        $user->kecamatan_id = $resolvedKecId;
+    }
+
+    if ($data['role'] == 3 && isset($data['nagari_id']) && $data['nagari_id']) {
+        $resolvedNagId = $this->resolveNagariId($data['nagari_id'], $resolvedKecId);
+        $user->nagari_id = $resolvedNagId;
+    }
+
+    $simpan = $user->save();
+
+    if(!$simpan){
+        return redirect()->back()->with('error', 'Gagal menambahkan user, silakan periksa kembali inputan Anda.');
+    }
+
+    $notif = new Notif();
+    $pegawai = auth()->user()->nama;
+    $notif->keterangan = 'Pegawai (' . $pegawai . ') menambahkan data pegawai baru: ' . $data['nama'];
+    $notif->kategori = 'anggota';
+    $notif->save();
+    return redirect()->route('user')->with('success', 'User berhasil ditambahkan.');
+}
+
+public function ubahUser(Request $request){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
+    }
+
+    if(!$request->id_user){
+        return redirect()->back()->with('error', 'ID user tidak ditemukan.');
+    }
+    $dataUser = User::findOrFail($request->id_user);
+    $kecamatans = Kecamatan::all();
+    $nagaris = Nagari::all();
+
+    if ($kecamatans->isEmpty() || $nagaris->isEmpty()) {
+        $csvData = $this->loadGeodataFromCsv();
+        $kecamatans = collect($csvData['kecamatans']);
+        $nagaris = collect($csvData['nagaris']);
+    }
+    return view('insert.updateUser', compact('dataUser', 'kecamatans', 'nagaris'));
+}
+
+public function simpanUbahUser(Request $request){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
+    }
+
+    $validate = Validator::make($request->all(), [
+        'id_user' => 'required|exists:users,id',
+        'nama' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email,'.$request->id_user,
+        'password' => 'nullable|string|min:8',
+        'role' => 'required|in:0,1,2,3,4,5',
+        'kecamatan_id' => 'nullable',
+        'nagari_id' => 'nullable'
+    ]);
+
+    if($validate->fails()){
+        return redirect()->route('user')->with('error', 'Gagal mengubah user, silakan periksa kembali inputan Anda.');
+    }
+
+    $data = $validate->validated();
+
+    $user = User::findOrFail($data['id_user']);
+    $user->nama = $data['nama'];
+    $user->email = $data['email'];
+    if($data['password']){
         $user->password = bcrypt($data['password']);
-        $user->role = $data['role'];
-        // assign area if role requires it
-        if(isset($data['kecamatan_id']) && $data['role'] == 2){
-            $user->kecamatan_id = $data['kecamatan_id'];
-        }
-        if(isset($data['nagari_id']) && $data['role'] == 3){
-            $user->nagari_id = $data['nagari_id'];
-        }
-
-        $simpan = $user->save();
-
-        if(!$simpan){
-            return redirect()->back()->with('error', 'Gagal menambahkan user, silakan periksa kembali inputan Anda.');
-        }
-
-        $notif = new Notif();
-        $pegawai = auth()->user()->nama;
-        $notif->keterangan = 'Pegawai (' . $pegawai . ') menambahkan data pegawai baru: ' . $data['nama'];
-        $notif->kategori = 'anggota';
-        $notif->save();
-        return redirect()->route('user')->with('success', 'User berhasil ditambahkan.');
     }
-
-    public function ubahUser(Request $request){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
-        }
-
-        if(!$request->id_user){
-            return redirect()->back()->with('error', 'ID user tidak ditemukan.');
-        }
-        $dataUser = User::findOrFail($request->id_user);
-        $kecamatans = Kecamatan::all();
-        $nagaris = Nagari::all();
-        return view('insert.updateUser', compact('dataUser', 'kecamatans', 'nagaris'));
-    }
-
-    public function simpanUbahUser(Request $request){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
-        }
-
-        $validate = Validator::make($request->all(), [
-            'id_user' => 'required|exists:users,id',
-            'nama' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,'.$request->id_user,
-            'password' => 'nullable|string|min:8',
-            'role' => 'required|in:0,1,2,3,4,5',
-            'kecamatan_id' => 'nullable|exists:kecamatans,id',
-            'nagari_id' => 'nullable|exists:nagaris,id'
-        ]);
-
-        if($validate->fails()){
-            return redirect()->route('user')->with('error', 'Gagal mengubah user, silakan periksa kembali inputan Anda.');
-        }
-
-        $data = $validate->validated();
-
-        $user = User::findOrFail($data['id_user']);
-        $user->nama = $data['nama'];
-        $user->email = $data['email'];
-        if($data['password']){
-            $user->password = bcrypt($data['password']);
-        }
-        $user->role = $data['role'];
-        // update wilayah if applicable
-        if(isset($data['kecamatan_id']) && $data['role'] == 2){
-            $user->kecamatan_id = $data['kecamatan_id'];
+    $user->role = $data['role'];
+    // update wilayah if applicable; resolve potentially non-numeric CSV values
+    if ($data['role'] == 2) {
+        if (isset($data['kecamatan_id']) && $data['kecamatan_id']) {
+            $user->kecamatan_id = $this->resolveKecamatanId($data['kecamatan_id']);
         } else {
             $user->kecamatan_id = null;
         }
-        if(isset($data['nagari_id']) && $data['role'] == 3){
-            $user->nagari_id = $data['nagari_id'];
+        // clear nagari when role is kecamatan
+        $user->nagari_id = null;
+    } elseif ($data['role'] == 3) {
+        // if kecamatan provided, resolve it first (used as parent for nagari creation)
+        $resolvedKec = null;
+        if (isset($data['kecamatan_id']) && $data['kecamatan_id']) {
+            $resolvedKec = $this->resolveKecamatanId($data['kecamatan_id']);
+            $user->kecamatan_id = $resolvedKec;
+        } else {
+            $user->kecamatan_id = null;
+        }
+        if (isset($data['nagari_id']) && $data['nagari_id']) {
+            $user->nagari_id = $this->resolveNagariId($data['nagari_id'], $resolvedKec);
         } else {
             $user->nagari_id = null;
         }
-        $simpan = $user->save();
+    } else {
+        $user->kecamatan_id = null;
+        $user->nagari_id = null;
+    }
+    $simpan = $user->save();
 
-        if(!$simpan){
-            return redirect()->route('user')->with('error', 'Gagal mengubah user, silakan periksa kembali inputan Anda.');
-        }
-
-        $notif = new Notif();
-        $pegawai = auth()->user()->nama;
-        $notif->keterangan = 'Pegawai (' . $pegawai . ') mengubah data pegawai: ' . $data['nama'];
-        $notif->kategori = 'anggota';
-        $notif->save();
-        return redirect()->route('user')->with('success', 'User berhasil diubah.');
+    if(!$simpan){
+        return redirect()->route('user')->with('error', 'Gagal mengubah user, silakan periksa kembali inputan Anda.');
     }
 
-    public function hapusUser(Request $request){
-        $user = auth()->user();
-        
-        // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
-        if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
-            return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
-        }
+    $notif = new Notif();
+    $pegawai = auth()->user()->nama;
+    $notif->keterangan = 'Pegawai (' . $pegawai . ') mengubah data pegawai: ' . $data['nama'];
+    $notif->kategori = 'anggota';
+    $notif->save();
+    return redirect()->route('user')->with('success', 'User berhasil diubah.');
+}
 
-        $validate = Validator::make($request->all(), [
-            'id_user' => 'required|exists:users,id'
-        ]);
-
-        if($validate->fails()){
-            return redirect()->back()->with('error', 'Data tidak ditemukan');
-        }
-
-        $user = User::findOrFail($request->id_user);
-        $simpan = $user->delete();
-
-        if(!$simpan){
-            return redirect()->back()->with('error', 'Gagal menghapus user, silakan periksa kembali inputan Anda.');
-        }
-
-        $notif = new Notif();
-        $pegawai = auth()->user()->nama;
-        $notif->keterangan = 'Pegawai (' . $pegawai . ') menghapus data pegawai: ' . $user->nama;
-        $notif->kategori = 'anggota';
-        $notif->save();
-        return redirect()->route('user')->with('success', 'User berhasil dihapus.');
+public function hapusUser(Request $request){
+    $user = auth()->user();
+    
+    // Hanya admin (role 0) dan petugas (role 1) yang bisa akses
+    if ($user->role == 2 || $user->role == 3) { // Kecamatan atau Nagari
+        return redirect()->back()->with('error', 'Anda tidak memiliki akses ke fitur ini.');
     }
+
+    $validate = Validator::make($request->all(), [
+        'id_user' => 'required|exists:users,id'
+    ]);
+
+    if($validate->fails()){
+        return redirect()->back()->with('error', 'Data tidak ditemukan');
+    }
+
+    $user = User::findOrFail($request->id_user);
+    $simpan = $user->delete();
+
+    if(!$simpan){
+        return redirect()->back()->with('error', 'Gagal menghapus user, silakan periksa kembali inputan Anda.');
+    }
+
+    $notif = new Notif();
+    $pegawai = auth()->user()->nama;
+    $notif->keterangan = 'Pegawai (' . $pegawai . ') menghapus data pegawai: ' . $user->nama;
+    $notif->kategori = 'anggota';
+    $notif->save();
+    return redirect()->route('user')->with('success', 'User berhasil dihapus.');
+}
 
     public function notifikasi(Request $request){
         $validate = Validator::make($request->all(), [
@@ -1063,5 +1381,169 @@ class adminController extends Controller
         $skipped = $import->skipped ?? 0;
 
         return redirect()->route('data.pelatih')->with('success', "Import selesai. Dimasukkan: {$inserted}, Dilewati: {$skipped}");
+    }
+
+    /**
+     * Load kecamatan and nagari lists from csv/xls/xlsx files in /csv folder.
+     * Returns ['kecamatans' => [...], 'nagaris' => [...]] where each item is an object with id and name.
+     */
+    private function loadGeodataFromCsv()
+    {
+        $base = base_path('csv');
+        $kecPath = $base . DIRECTORY_SEPARATOR . 'kecamatan';
+        $nagPath = $base . DIRECTORY_SEPARATOR . 'nagari';
+
+        $collectFiles = function ($dir) {
+            $files = [];
+            if (!is_dir($dir)) return $files;
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir));
+            foreach ($it as $f) {
+                if (!$f->isFile()) continue;
+                $ext = strtolower(pathinfo($f->getFilename(), PATHINFO_EXTENSION));
+                if (in_array($ext, ['csv','xls','xlsx'])) {
+                    $files[] = $f->getPathname();
+                }
+            }
+            return $files;
+        };
+
+        $kecFiles = $collectFiles($kecPath);
+        $nagFiles = $collectFiles($nagPath);
+
+        $parseRowsFromFile = function ($file) {
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            $rows = [];
+            if (!is_file($file) || !is_readable($file)) return $rows;
+
+            if (in_array($ext, ['xls','xlsx'])) {
+                try {
+                    // Use PhpSpreadsheet via the Excel facade when available
+                    $sheets = Excel::toArray(null, $file);
+                    if (is_array($sheets) && count($sheets) > 0) {
+                        $sheet = $sheets[0] ?? [];
+                        foreach ($sheet as $data) {
+                            $rows[] = $data;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    return [];
+                }
+            } else {
+                if (($handle = fopen($file, 'r')) !== false) {
+                    while (($data = fgetcsv($handle, 0, ',')) !== false) {
+                        if (count($data) === 1 && trim($data[0]) === '') continue;
+                        $rows[] = $data;
+                    }
+                    fclose($handle);
+                }
+            }
+
+            $assoc = [];
+            $headers = null;
+            foreach ($rows as $data) {
+                if (!$headers) {
+                    $isHeader = false;
+                    foreach ($data as $cell) {
+                        if (is_string($cell) && preg_match('/[a-zA-Z]/', $cell)) { $isHeader = true; break; }
+                    }
+                    if ($isHeader) {
+                        $headers = array_map(function($h){ return trim(strtolower((string)$h)); }, $data);
+                        continue;
+                    } else {
+                        $headers = array_map(function($i){ return 'col_' . $i; }, array_keys($data));
+                    }
+                }
+                $row = [];
+                foreach ($data as $i => $value) {
+                    $key = $headers[$i] ?? 'col_' . $i;
+                    $row[$key] = is_scalar($value) ? trim((string)$value) : $value;
+                }
+                $assoc[] = $row;
+            }
+            return $assoc;
+        };
+
+        $kecList = [];
+        foreach ($kecFiles as $file) {
+            $rows = $parseRowsFromFile($file);
+            foreach ($rows as $r) {
+                $id = $r['id'] ?? ($r['kode'] ?? null);
+                $name = $r['nama'] ?? ($r['name'] ?? ($r['kecamatan'] ?? null));
+                if (!$name) {
+                    $first = reset($r);
+                    $name = $first !== false ? $first : null;
+                }
+                if (!$name) continue;
+                $kecList[] = (object)['id' => $id, 'name' => $name];
+            }
+        }
+
+        $nagList = [];
+        foreach ($nagFiles as $file) {
+            $rows = $parseRowsFromFile($file);
+            foreach ($rows as $r) {
+                $id = $r['id'] ?? ($r['kode'] ?? null);
+                $name = $r['nama'] ?? ($r['name'] ?? ($r['nagari'] ?? null));
+                if (!$name) {
+                    $first = reset($r);
+                    $name = $first !== false ? $first : null;
+                }
+                if (!$name) continue;
+                $parent = $r['kecamatan'] ?? ($r['kecamatan_name'] ?? ($r['kecamatan_id'] ?? ($r['kec'] ?? null)));
+                $nagList[] = (object)['id' => $id, 'name' => $name, 'kecamatan' => $parent];
+            }
+        }
+
+        return ['kecamatans' => $kecList, 'nagaris' => $nagList];
+    }
+
+    /**
+     * Resolve a kecamatan identifier (id, kode, or name) to a DB id. Create if missing.
+     * @param mixed $input
+     * @return int|null
+     */
+    public function resolveKecamatanId($input)
+    {
+        if (!$input) return null;
+        // numeric id
+        if (is_numeric($input)) {
+            $k = Kecamatan::find($input);
+            if ($k) return $k->id;
+        }
+        // try by code or name
+        $k = Kecamatan::where('kode_kecamatan', $input)->orWhere('nama_kecamatan', $input)->first();
+        if ($k) return $k->id;
+        // create a new kecamatan record
+        $new = new Kecamatan();
+        // set fields conservatively
+        $new->nama_kecamatan = (string)$input;
+        $new->kode_kecamatan = 'K' . substr(md5((string)$input . time()), 0, 8);
+        $new->save();
+        return $new->id;
+    }
+
+    /**
+     * Resolve a nagari identifier (id, kode, or name) to a DB id. Create if missing.
+     * @param mixed $input
+     * @param int|null $kecamatanId
+     * @return int|null
+     */
+    public function resolveNagariId($input, $kecamatanId = null)
+    {
+        if (!$input) return null;
+        if (is_numeric($input)) {
+            $n = Nagari::find($input);
+            if ($n) return $n->id;
+        }
+        // try by code or name
+        $n = Nagari::where('kode_nagari', $input)->orWhere('nama_nagari', $input)->first();
+        if ($n) return $n->id;
+        // create new nagari
+        $new = new Nagari();
+        $new->nama_nagari = (string)$input;
+        $new->kode_nagari = 'N' . substr(md5((string)$input . time()), 0, 8);
+        if ($kecamatanId) $new->kecamatan_id = $kecamatanId;
+        $new->save();
+        return $new->id;
     }
 }

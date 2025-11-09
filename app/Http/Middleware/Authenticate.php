@@ -23,7 +23,7 @@ class Authenticate
      */
     public function handle(Request $request, Closure $next): Response {
         if(!Auth::guard('user')->check()){
-            return redirect()->route('login.admin')->with('error', 'Anda harus login terlebih dahulu');
+            return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
         return $next($request);
     }

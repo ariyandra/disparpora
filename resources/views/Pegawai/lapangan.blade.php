@@ -99,7 +99,50 @@
                             <td>{{ $lapangan->lokasi }}</td>
                             <td>{{ $lapangan->deskripsi }}</td>
                             <td>
-                                <div class="action-buttons">
+                                <div class="action-buttons" style="gap:8px; display:flex; flex-direction:column; align-items:flex-start;">
+                                    <div>
+                                        @php($st = $lapangan->status_verifikasi ?? 'approved')
+                                        <span style="font-size:12px;padding:4px 8px;border-radius:9999px;"
+                                              class="
+                                                {{ $st=='approved' ? 'bg-green-100 text-green-700' : '' }}
+                                                {{ $st=='pending_kecamatan' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                {{ $st=='pending_admin' ? 'bg-amber-100 text-amber-700' : '' }}
+                                                {{ $st=='rejected' ? 'bg-red-100 text-red-700' : '' }}
+                                              ">
+                                            {{ strtoupper(str_replace('_',' ',$st)) }}
+                                        </span>
+                                    </div>
+                                    @php($role = auth()->user()->role)
+                                    @if($role == 2 && ($lapangan->status_verifikasi ?? '') === 'pending_kecamatan')
+                                        <form action="{{ route('verifikasi.approve') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                            @csrf
+                                            <input type="hidden" name="entity" value="lapangans">
+                                            <input type="hidden" name="id" value="{{ $lapangan->id }}">
+                                            <button type="submit" class="btn-action" style="background:#10b981;color:#fff;">✓ Approve</button>
+                                        </form>
+                                        <form action="{{ route('verifikasi.reject') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                            @csrf
+                                            <input type="hidden" name="entity" value="lapangans">
+                                            <input type="hidden" name="id" value="{{ $lapangan->id }}">
+                                            <input type="text" name="reason" placeholder="Alasan (opsional)" style="border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;">
+                                            <button type="submit" class="btn-action" style="background:#ef4444;color:#fff;">✗ Reject</button>
+                                        </form>
+                                    @endif
+                                    @if(in_array($role,[0,1]) && ($lapangan->status_verifikasi ?? '') === 'pending_admin')
+                                        <form action="{{ route('verifikasi.approve') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                            @csrf
+                                            <input type="hidden" name="entity" value="lapangans">
+                                            <input type="hidden" name="id" value="{{ $lapangan->id }}">
+                                            <button type="submit" class="btn-action" style="background:#10b981;color:#fff;">✓ Approve</button>
+                                        </form>
+                                        <form action="{{ route('verifikasi.reject') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                            @csrf
+                                            <input type="hidden" name="entity" value="lapangans">
+                                            <input type="hidden" name="id" value="{{ $lapangan->id }}">
+                                            <input type="text" name="reason" placeholder="Alasan (opsional)" style="border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;">
+                                            <button type="submit" class="btn-action" style="background:#ef4444;color:#fff;">✗ Reject</button>
+                                        </form>
+                                    @endif
                                     <form action="{{ route('ubah.lapangan') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="id_lapangan" value="{{ $lapangan->id }}">
@@ -117,6 +160,7 @@
                                     </form>
                                 </div>
                             </td>
+
                         </tr>
                         @endforeach
                     </tbody>

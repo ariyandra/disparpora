@@ -114,6 +114,7 @@
                             <th>Cabor</th>
                             <th>Tanggal Lahir</th>
                             <th>Tanggal Gabung</th>
+                            <th>Dokumen</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -137,9 +138,81 @@
                                 <td>{{ $atlet->tanggal_lahir }}</td>
                                 <td>{{ $atlet->tanggal_gabung }}</td>
                                 <td>
-                                    <div class="action-buttons">
-                                        <form action="{{ route('update.atlet') }}" method="POST">
-                                            @csrf
+                                    @php($docs = $atlet->documents ?? collect())
+                                    @if($docs->count())
+                                        <details>
+                                            <summary style="cursor:pointer; font-size:12px; color:#374151;">Lihat Dokumen ({{ $docs->count() }})</summary>
+                                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:6px;">
+                                                @foreach($docs as $doc)
+                                                    <a href="{{ route('documents.view', $doc->id) }}" target="_blank" style="display:flex; align-items:center; gap:6px; font-size:12px; border:1px solid #e5e7eb; padding:6px; border-radius:8px;">
+                                                        @if(\Illuminate\Support\Str::startsWith($doc->mime,'image/'))
+                                                            <img src="{{ asset('storage/'.$doc->path) }}" alt="{{ $doc->original_name }}" style="width:36px; height:36px; object-fit:cover; border-radius:6px;">
+                                                        @else
+                                                            <span>📄</span>
+                                                        @endif
+                                                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $doc->kategori ?? 'Dokumen' }}</span>
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        </details>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="action-buttons" style="gap:8px; display:flex; flex-direction:column; align-items:flex-start;">
+                                        <div>
+                                            @php($st = $atlet->status_verifikasi ?? 'approved')
+                                            <span style="font-size:12px;padding:4px 8px;border-radius:9999px;"
+                                                  class="
+                                                    {{ $st=='approved' ? 'bg-green-100 text-green-700' : '' }}
+                                                    {{ $st=='pending_kecamatan' ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                                    {{ $st=='pending_admin' ? 'bg-amber-100 text-amber-700' : '' }}
+                                                    {{ $st=='rejected' ? 'bg-red-100 text-red-700' : '' }}
+                                                  ">
+                                                {{ strtoupper(str_replace('_',' ',$st)) }}
+                                            </span>
+                                        </div>
+                                        @php($role = auth()->user()->role)
+                                        @if($role == 2 && ($atlet->status_verifikasi ?? '') === 'pending_kecamatan')
+                                            <form action="{{ route('verifikasi.approve') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                                @csrf
+                                                <input type="hidden" name="entity" value="atlets">
+                                                <input type="hidden" name="id" value="{{ $atlet->id }}">
+                                                <button type="submit" class="btn-action" style="background:#10b981;color:#fff;">
+                                                    ✓ Approve
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('verifikasi.reject') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                                @csrf
+                                                <input type="hidden" name="entity" value="atlets">
+                                                <input type="hidden" name="id" value="{{ $atlet->id }}">
+                                                <input type="text" name="reason" placeholder="Alasan (opsional)" style="border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;">
+                                                <button type="submit" class="btn-action" style="background:#ef4444;color:#fff;">
+                                                    ✗ Reject
+                                                </button>
+                                            </form>
+                                        @endif
+                                        @if(in_array($role,[0,1]) && ($atlet->status_verifikasi ?? '') === 'pending_admin')
+                                            <form action="{{ route('verifikasi.approve') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                                @csrf
+                                                <input type="hidden" name="entity" value="atlets">
+                                                <input type="hidden" name="id" value="{{ $atlet->id }}">
+                                                <button type="submit" class="btn-action" style="background:#10b981;color:#fff;">
+                                                    ✓ Approve
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('verifikasi.reject') }}" method="POST" style="display:inline-flex;gap:6px;">
+                                                @csrf
+                                                <input type="hidden" name="entity" value="atlets">
+                                                <input type="hidden" name="id" value="{{ $atlet->id }}">
+                                                <input type="text" name="reason" placeholder="Alasan (opsional)" style="border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;">
+                                                <button type="submit" class="btn-action" style="background:#ef4444;color:#fff;">
+                                                    ✗ Reject
+                                                </button>
+                                            </form>
+                                        @endif
+                                        <form action="{{ route('update.atlet') }}" method="GET">
                                             <input type="hidden" name="id_atlet" value="{{ $atlet->id }}">
                                             <button type="submit" class="btn-action btn-edit">
                                                 <span>✏️</span> Edit
@@ -153,8 +226,27 @@
                                                 <span>🗑️</span> Hapus
                                             </button>
                                         </form>
+                                        @php($docs = $atlet->documents ?? collect())
+                                        @if($docs->count())
+                                            <details style="margin-top:6px;">
+                                                <summary style="cursor:pointer; font-size:12px; color:#374151;">📄 Lihat Dokumen ({{ $docs->count() }})</summary>
+                                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:6px;">
+                                                    @foreach($docs as $doc)
+                                                        <a href="{{ asset('storage/'.$doc->path) }}" target="_blank" style="display:flex; align-items:center; gap:6px; font-size:12px; border:1px solid #e5e7eb; padding:6px; border-radius:8px;">
+                                                            @if(Str::startsWith($doc->mime,'image/'))
+                                                                <img src="{{ asset('storage/'.$doc->path) }}" alt="{{ $doc->original_name }}" style="width:36px; height:36px; object-fit:cover; border-radius:6px;">
+                                                            @else
+                                                                <span>📄</span>
+                                                            @endif
+                                                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $doc->kategori ?? 'Dokumen' }}</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            </details>
+                                        @endif
                                     </div>
                                 </td>
+
                             </tr>
                         @endforeach
                     </tbody>

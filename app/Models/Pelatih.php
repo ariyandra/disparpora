@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Document;
 
 class Pelatih extends Authenticatable
 {
@@ -33,5 +34,10 @@ class Pelatih extends Authenticatable
     public function nagari()
     {
         return $this->belongsTo(Nagari::class, 'nagari_id');
+    }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
     }
 }

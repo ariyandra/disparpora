@@ -17,3 +17,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Geodata: return kecamatan + nagari lists from CSV files placed in /csv
+Route::get('/tanahdatar/areas', [\App\Http\Controllers\GeodataController::class, 'tanahDatar']);

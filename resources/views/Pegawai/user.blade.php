@@ -83,6 +83,8 @@
                             <th>No</th>
                             <th>Nama</th>
                             <th>Email</th>
+                            <th>Kecamatan</th>
+                            <th>Nagari</th>
                             <th>Role</th>
                             <th>Aksi</th>
                         </tr>
@@ -93,6 +95,8 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $pegawai->nama }}</td>
                             <td>{{ $pegawai->email }}</td>
+                            <td>{{ optional($pegawai->kecamatan)->nama_kecamatan ?? optional($pegawai->kecamatan)->name ?? '-' }}</td>
+                            <td>{{ optional($pegawai->nagari)->nama_nagari ?? optional($pegawai->nagari)->name ?? '-' }}</td>
                             <td>
                                 @if($pegawai->role == 0)
                                     Admin

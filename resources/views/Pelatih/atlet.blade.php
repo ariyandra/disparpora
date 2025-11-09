@@ -100,6 +100,7 @@
                             <th>Cabor</th>
                             <th>Tanggal Lahir</th>
                             <th>Tanggal Gabung</th>
+                            <th>Dokumen</th>
                         </tr>
                     </thead>
                     <tbody id="atletTableBody">
@@ -121,6 +122,28 @@
                                 <td>{{ $atlet->cabor->nama_cabor }}</td>
                                 <td>{{ $atlet->tanggal_lahir }}</td>
                                 <td>{{ $atlet->tanggal_gabung }}</td>
+                                <td>
+                                    @php($docs = $atlet->documents ?? collect())
+                                    @if($docs->count())
+                                        <details>
+                                            <summary style="cursor:pointer; font-size:12px; color:#374151;">Lihat Dokumen ({{ $docs->count() }})</summary>
+                                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin-top:6px;">
+                                                @foreach($docs as $doc)
+                                                    <a href="{{ route('pelatih.documents.view', $doc->id) }}" target="_blank" style="display:flex; align-items:center; gap:6px; font-size:12px; border:1px solid #e5e7eb; padding:6px; border-radius:8px;">
+                                                        @if(\Illuminate\Support\Str::startsWith($doc->mime,'image/'))
+                                                            <img src="{{ asset('storage/'.$doc->path) }}" alt="{{ $doc->original_name }}" style="width:36px; height:36px; object-fit:cover; border-radius:6px;">
+                                                        @else
+                                                            <span>📄</span>
+                                                        @endif
+                                                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $doc->kategori ?? 'Dokumen' }}</span>
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        </details>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

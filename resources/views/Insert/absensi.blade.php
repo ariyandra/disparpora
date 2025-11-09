@@ -75,21 +75,54 @@
                         <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         <div style="position: absolute; bottom: -30px; left: -30px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(238, 90, 82, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         
-                        <!-- Nama Atlet -->
-                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
-                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
-                            <label for="nama_atlet" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🏃‍♂️ Nama Atlet <span style="color: #ff6b6b;">*</span>
-                            </label>
-                            
-                            <input list="list_atlet" id="nama_atlet" name="nama_atlet" placeholder="Ketik untuk mencari..." style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);" placeholder="Masukkan nama atlet" onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'" onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'" required>
-                            <datalist id="list_atlet">
-                                @foreach ($dataAtlet as $atlet)
-                                    <option value="{{ $atlet->nama }}" data-id="{{ $atlet->id }}"></option>
-                                @endforeach
-                            </datalist>
-
-                            <input type="hidden" id="atlet_id" name="atlet_id">
+                        <!-- Batch Input Atlet -->
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display:block;">🏃‍♂️ Pilih Atlet & Isi Status</label>
+                            <div style="display:flex; gap:12px; align-items:center; margin: 10px 0 12px 0;">
+                                <div style="flex:1; max-width: 420px; position: relative;">
+                                    <input id="searchAtlet" type="text" placeholder="Cari atlet..." style="width:100%; padding:10px 14px 10px 36px; border:1px solid #e5e7eb; border-radius:10px;">
+                                    <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af;">🔍</span>
+                                </div>
+                                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                                    <input type="checkbox" id="selectAllVisible"> Pilih Semua (terlihat)
+                                </label>
+                            </div>
+                            <div class="overflow-auto" style="max-height: 420px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff;">
+                                <table class="min-w-full" style="width: 100%; border-collapse: collapse;">
+                                    <thead style="position: sticky; top: 0; background: #f9fafb;">
+                                        <tr>
+                                            <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Pilih</th>
+                                            <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Nama Atlet</th>
+                                            <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Status</th>
+                                            <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($dataAtlet as $atlet)
+                                        <tr class="row-atlet" data-nama="{{ strtolower($atlet->nama) }}" style="border-top: 1px solid #f3f4f6;">
+                                            <td style="padding: 10px;">
+                                                <input type="checkbox" class="cb-include" name="rows[{{ $atlet->id }}][include]" value="1">
+                                            </td>
+                                            <td class="cell-nama" style="padding: 10px; font-size:14px; color:#111827;">{{ $atlet->nama }}</td>
+                                            <td style="padding: 10px;">
+                                                <select name="rows[{{ $atlet->id }}][status]" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                                                    <option value="">- Pilih -</option>
+                                                    <option value="Hadir">Hadir</option>
+                                                    <option value="Tidak Hadir">Tidak Hadir</option>
+                                                    <option value="Izin">Izin</option>
+                                                    <option value="Sakit">Sakit</option>
+                                                    <option value="Alpa">Alpa</option>
+                                                </select>
+                                            </td>
+                                            <td style="padding: 10px;">
+                                                <input type="text" name="rows[{{ $atlet->id }}][keterangan]" placeholder="Opsional" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; width: 100%;">
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p style="margin-top:8px; font-size:12px; color:#6b7280;">Centang atlet yang ingin diabsen, lalu pilih status dan isi keterangan bila perlu.</p>
                         </div>
 
                         <!-- Tanggal -->
@@ -107,7 +140,8 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Jadwal -->
+                        <!-- Jadwal (Berlaku untuk semua yang dipilih) -->
+
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -122,41 +156,8 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Status -->
-                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
-                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
-                            <label for="status" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                ✅ Status <span style="color: #ff6b6b;">*</span>
-                            </label>
-                            <select id="status" 
-                                    name="status" 
-                                    required
-                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
-                                <option value="-">Pilih Status</option>
-                                <option value="Hadir">Hadir</option>
-                                <option value="Tidak Hadir">Tidak Hadir</option>
-                                <option value="Izin">Izin</option>
-                                <option value="Sakit">Sakit</option>
-                            </select>
-                        </div>
+                        <!-- Catatan: keterangan kini per-atlet pada tabel di atas -->
 
-                        <!-- Keterangan -->
-                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden; grid-column: 1 / -1;">
-                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
-                            <label for="keterangan" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                📝 Keterangan
-                            </label>
-                            <textarea id="keterangan" 
-                                      name="keterangan" 
-                                      required
-                                      rows="4"
-                                      style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8); resize: vertical; min-height: 100px;"
-                                      placeholder="Masukkan keterangan tambahan (opsional)"
-                                      onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                      onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"></textarea>
-                        </div>
                     </div>
 
                     <!-- Form Actions -->
@@ -183,26 +184,42 @@
     </main>
 
     <script>
-        // Form submission
-        document.getElementById('absensiForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerHTML;
-            
-            // Show loading state
-            submitBtn.innerHTML = '<span class="loading"></span> Menyimpan...';
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.7';
-            submitBtn.style.cursor = 'not-allowed';
-            
-            // Simulate form submission
-            setTimeout(() => {
-                alert('Data absensi berhasil disimpan!');
-                window.location.href = '';
-            }, 1500);
-        });
+        // Pencarian dan Pilih Semua (terlihat)
+        (function(){
+            const search = document.getElementById('searchAtlet');
+            const selectAll = document.getElementById('selectAllVisible');
+            const rows = () => Array.from(document.querySelectorAll('.row-atlet'));
 
+            function applyFilter(){
+                const term = (search?.value || '').toLowerCase();
+                rows().forEach(tr => {
+                    const name = (tr.getAttribute('data-nama') || '').toLowerCase();
+                    tr.style.display = !term || name.includes(term) ? '' : 'none';
+                });
+            }
+
+            function setSelectAllVisible(checked){
+                rows().forEach(tr => {
+                    if (tr.style.display !== 'none'){
+                        const cb = tr.querySelector('.cb-include');
+                        if (cb) cb.checked = checked;
+                    }
+                });
+            }
+
+            search?.addEventListener('input', () => {
+                applyFilter();
+                // reset select all state after filtering
+                if (selectAll) selectAll.checked = false;
+            });
+
+            selectAll?.addEventListener('change', (e) => {
+                setSelectAllVisible(!!e.target.checked);
+            });
+
+            // initial apply (no filter)
+            applyFilter();
+        })();
         // Enhanced form interactions
         document.addEventListener('DOMContentLoaded', function() {
             // Add focus effects to form fields
@@ -237,7 +254,8 @@
 
             // Set default tanggal to today
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tanggal').value = today;
+            const tgl = document.getElementById('tanggal_absen');
+            if (tgl) tgl.value = today;
 
             // Add loading animation styles
             const style = document.createElement('style');

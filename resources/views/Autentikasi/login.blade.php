@@ -274,8 +274,8 @@
             <div class="login-card">
                 <!-- Header -->
                 <div class="login-header">
-                    <h1 class="login-title">Selamat Datang Kembali</h1>
-                    <p class="login-subtitle">Masuk ke akun Anda untuk melanjutkan</p>
+                    <h1 class="login-title">Masuk ke Akun</h1>
+                    <p class="login-subtitle">Pilih peran, lalu masukkan email dan password</p>
                 </div>
 
                 <!-- Error/Success Messages -->
@@ -293,9 +293,20 @@
                     </div>
                 @endif
 
-                <!-- Login Form -->
-                <form class="login-form" method="POST" action="{{ route('login.admin') }}">
+                <!-- Login Form (Unified) -->
+                <form class="login-form" method="POST" action="{{ route('login.submit') }}">
                     @csrf
+                    <div class="form-group">
+                        <label class="form-label" for="role">Peran</label>
+                        <div>
+                            <select id="role" name="role" class="form-input" required>
+                                <option value="">Pilih peran</option>
+                                <option value="admin" {{ old('role')=='admin'?'selected':'' }}>Admin/Pegawai</option>
+                                <option value="pelatih" {{ old('role')=='pelatih'?'selected':'' }}>Pelatih</option>
+                                <option value="atlet" {{ old('role')=='atlet'?'selected':'' }}>Atlet</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label class="form-label" for="email">Email</label>
                         <div class="input-icon">
@@ -327,13 +338,16 @@
                         </div>
                     </div>
 
-                    <p class="login-subtitle">Masuk sebagai <a href="{{ route('login.pelatih') }}">Pelatih</a> / <a href="{{ route('login.atlet') }}">Atlet</a> </p>
+                    
 
                     <button type="submit" class="login-btn">
                         <i class="fas fa-sign-in-alt"></i>
                         Masuk
                     </button>
                 </form>
+                <div style="text-align:center; margin-top:12px;">
+                    <a href="{{ route('password.forgot') }}" style="color:#667eea; text-decoration:none; font-weight:600;">Lupa Password?</a>
+                </div>
             </div>
         </div>
     </div>

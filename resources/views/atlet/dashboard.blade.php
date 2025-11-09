@@ -218,6 +218,54 @@
                         Cetak Profil
                     </button>
                 </div>
+
+                <!-- Foto & Dokumen -->
+                <div class="form-grid" style="margin-top:24px;">
+                    <div class="form-column">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-image"></i>
+                                Foto Profil
+                            </label>
+                            <div class="form-display">
+                                @if(!empty($dataAtlet->foto))
+                                    <img src="{{ asset('storage/'.$dataAtlet->foto) }}" alt="Foto {{ $dataAtlet->nama }}" style="width:140px;height:140px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb;" />
+                                @else
+                                    <span style="font-size:12px;color:#6b7280;">Belum ada foto</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-column">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-file-alt"></i>
+                                Dokumen Saya
+                            </label>
+                            @php($docs = $dataAtlet->documents ?? collect())
+                            @if($docs->count())
+                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
+                                    @foreach($docs as $doc)
+                                        <a href="{{ route('atlet.documents.view', $doc->id) }}" target="_blank" style="display:flex; align-items:center; gap:8px; font-size:12px; border:1px solid #e5e7eb; padding:8px; border-radius:10px; background:#fff;">
+                                            @if(\Illuminate\Support\Str::startsWith($doc->mime,'image/'))
+                                                <img src="{{ asset('storage/'.$doc->path) }}" alt="{{ $doc->original_name }}" style="width:42px; height:42px; object-fit:cover; border-radius:8px;">
+                                            @else
+                                                <span>📄</span>
+                                            @endif
+                                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $doc->kategori ?? 'Dokumen' }}</span>
+                                        </a>
+                                    @endforeach
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <a href="{{ route('atlet.dokumen') }}" style="font-size:12px;color:#2563eb;">Lihat semua dokumen →</a>
+                                </div>
+                            @else
+                                <div class="form-display" style="font-size:12px;color:#6b7280;">Belum ada dokumen</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         </div>

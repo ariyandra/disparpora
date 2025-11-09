@@ -119,6 +119,8 @@
                 
                 <form action="{{ route('simpan.update.absensi') }}" method="POST" style="margin-top: 30px;">
                     @csrf
+
+                    <input type="hidden" name="id_absensi" value="{{ $absensi->id }}">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; position: relative;">
                         
                         <!-- Decorative Elements -->
@@ -139,7 +141,7 @@
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Atlet</option>
                                 @foreach ($dataAtlet as $atlet)
-                                    <option value="{{ $atlet->id }}">{{ $atlet->nama }}</option>
+                                    <option value="{{ $atlet->id }}" {{ $absensi->atlet_id == $atlet->id ? 'selected' : '' }}>{{ $atlet->nama }}</option>
                                 @endforeach
                             </select>
 

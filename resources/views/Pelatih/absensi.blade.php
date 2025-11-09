@@ -62,6 +62,72 @@
                 </div>
             </div>
             
+            <div class="table-container-card mb-6">
+                <div class="table-header">
+                    <h2 class="table-title">Rekapitulasi Absensi</h2>
+                </div>
+                <form method="GET" action="{{ route('absensi.pelatih') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Tanggal Mulai</label>
+                        <input type="date" name="start_date" value="{{ $filters['start_date'] ?? '' }}" class="w-full border rounded-lg px-3 py-2" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Tanggal Selesai</label>
+                        <input type="date" name="end_date" value="{{ $filters['end_date'] ?? '' }}" class="w-full border rounded-lg px-3 py-2" required>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm text-gray-600 mb-1">Atlet</label>
+                        <select name="atlet_id" class="w-full border rounded-lg px-3 py-2">
+                            <option value="">Semua</option>
+                            @isset($atlets)
+                                @foreach($atlets as $a)
+                                    <option value="{{ $a->id }}" {{ ($filters['atlet_id'] ?? '') == $a->id ? 'selected' : '' }}>{{ $a->nama }}</option>
+                                @endforeach
+                            @endisset
+                        </select>
+                    </div>
+                    <div class="md:col-span-4 flex gap-3">
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Terapkan</button>
+                        <a href="{{ route('pelatih.absensi.export.csv', request()->query()) }}" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">Export CSV</a>
+                        <button type="button" onclick="window.print()" class="px-4 py-2 bg-gray-700 text-white rounded-lg">Print / PDF</button>
+                    </div>
+                </form>
+                <div class="overflow-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Atlet</th>
+                                <th>Pertemuan</th>
+                                <th>Hadir</th>
+                                <th>Sakit</th>
+                                <th>Izin</th>
+                                <th>Alpa</th>
+                                <th>% Hadir</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @isset($rekap)
+                                @forelse($rekap as $r)
+                                <tr>
+                                    <td>{{ $r['atlet_nama'] }}</td>
+                                    <td>{{ $r['total'] }}</td>
+                                    <td>{{ $r['hadir'] }}</td>
+                                    <td>{{ $r['sakit'] }}</td>
+                                    <td>{{ $r['izin'] }}</td>
+                                    <td>{{ $r['alpa'] }}</td>
+                                    <td>{{ $r['persen_hadir'] }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="7" class="text-center text-sm text-gray-500">Tidak ada data rekap.</td>
+                                </tr>
+                                @endforelse
+                            @endisset
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
             <!-- Table Container Card -->
             <div class="table-container-card">
                 <div class="table-header">

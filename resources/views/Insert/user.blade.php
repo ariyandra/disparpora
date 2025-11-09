@@ -8,6 +8,36 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/pelatih.css') }}" rel="stylesheet">
     <link href="{{ asset('css/pelatih-custom.css') }}" rel="stylesheet">
+    <style>
+        /* CSS Tambahan untuk animasi loading */
+        @keyframes spinner {
+            to {transform: rotate(360deg);}
+        }
+        .loading {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spinner 0.6s linear infinite;
+        }
+        /* Style untuk dropdown yang dinonaktifkan sementara */
+        #kecamatanField[style*="display:none"] select,
+        #nagariField[style*="display:none"] select {
+            pointer-events: none !important;
+            opacity: 0.6 !important;
+        }
+
+        /* PERBAIKAN: Hapus Hotfix CSS sebelumnya karena akan ditangani oleh JS */
+        /* Pastikan elemen select selalu punya z-index tinggi saat aktif (akan disetel di JS) */
+        #kecamatan_id, #nagari_id {
+            /* Pastikan style bawaan tidak menonaktifkan pointer events */
+            pointer-events: auto;
+            position: relative;
+            z-index: 10;
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -42,7 +72,7 @@
                     <a href="{{ route('jadwal') }}" class="nav-link">Jadwal</a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('user') }}" class="nav-link  active">User</a>
+                    <a href="{{ route('user') }}" class="nav-link active">User</a>
                 </li>
             </ul>
             
@@ -52,12 +82,11 @@
                 </svg>
                 Logout
             </a>
-            </div>
+        </div>
     </nav>
 
     <main class="main-content">
         <div class="page-container mt-32 sm:mt-40">
-            <!-- Page Header Card -->
             <div class="page-header-card">
                 <div class="flex justify-between items-center">
                     <h1 class="page-title">Tambah User</h1>
@@ -67,21 +96,18 @@
                 </div>
             </div>
             
-            <!-- Form Container Card -->
             <div class="table-container-card">
                 <div class="table-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                     <h2 class="table-title">Form Data User</h2>
                 </div>
                 
-                <form action="{{ route('simpanUser') }}" method="POST" style="margin-top: 30px;">
+                <form id="userForm" action="{{ route('simpanUser') }}" method="POST" style="margin-top: 30px;">
                     @csrf
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; position: relative;">
                         
-                        <!-- Decorative Elements -->
                         <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         <div style="position: absolute; bottom: -30px; left: -30px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(238, 90, 82, 0.1)); border-radius: 50%; z-index: -1;"></div>
                         
-                        <!-- Nama -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="nama" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -97,7 +123,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Email -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="email" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -113,7 +138,6 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Password -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="password" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -139,7 +163,35 @@
                             <div id="passwordStrength" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
                         </div>
 
-                        <!-- Role -->
+                        <div id="kecamatanField" style="display:none; display: flex; flex-direction: column;">
+                            <label for="kecamatan_id" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
+                                🗺️ Kecamatan
+                            </label>
+                            <select id="kecamatan_id" name="kecamatan_id" style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);" disabled>
+                                <option value="">Pilih Kecamatan</option>
+                                @foreach($kecamatans as $kec)
+                                    <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan ?? $kec->name ?? 'Kecamatan '.$kec->id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="nagariField" style="display:none; display: flex; flex-direction: column;">
+                            <label for="nagari_id" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
+                                🏘️ Nagari
+                            </label>
+                            <select id="nagari_id" name="nagari_id" style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);" disabled>
+                                <option value="">Pilih Nagari</option>
+                                @foreach($nagaris as $n)
+                                    @php
+                                        // resolve parent kecamatan id if available
+                                        $parentId = $n->kecamatan_id ?? ($n->kecamatan->id ?? null);
+                                        $nagName = $n->nama_nagari ?? $n->name ?? 'Nagari '.($n->id ?? '');
+                                    @endphp
+                                    <option value="{{ $n->id ?? $n->name ?? $n->nama ?? $nagName }}" data-kecamatan="{{ $parentId }}">{{ $nagName }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="role" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
@@ -156,34 +208,10 @@
                                 <option value=1>Pegawai</option>
                                 <option value=2>Kecamatan</option>
                                 <option value=3>Nagari</option>
-                                <option value=4>Pelatih</option>
-                                <option value=5>Atlet</option>
-                            </select>
-                        </div>
-                        <!-- Kecamatan dropdown (shown when role == 2) -->
-                        <div id="kecamatanField" style="display:none;">
-                            <label for="kecamatan_id">Kecamatan</label>
-                            <select id="kecamatan_id" name="kecamatan_id" style="padding:8px; width:100%">
-                                <option value="">Pilih Kecamatan</option>
-                                @foreach($kecamatans as $kec)
-                                    <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan ?? $kec->name ?? 'Kecamatan '.$kec->id }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Nagari dropdown (shown when role == 3) -->
-                        <div id="nagariField" style="display:none;">
-                            <label for="id_nagari">Nagari</label>
-                            <select id="id_nagari" name="id_nagari" style="padding:8px; width:100%">
-                                <option value="">Pilih Nagari</option>
-                                @foreach($nagaris as $n)
-                                    <option value="{{ $n->id }}">{{ $n->nama_nagari ?? $n->name ?? 'Nagari '.$n->id }}</option>
-                                @endforeach
                             </select>
                         </div>
                     </div>
 
-                    <!-- Form Actions -->
                     <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 2px solid #f0f0f0; position: relative;">
                         <div style="position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 60px; height: 2px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 1px;"></div>
                         <a href="{{ route('user') }}"
@@ -192,9 +220,9 @@
                            onmouseout="this.style.borderColor='#e0e0e0'; this.style.color='#666'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 10px rgba(0,0,0,0.1)'">
                             <span>✕</span> Batal
                         </a>
-                        <button type="submit" 
-                                class="btn-tambah"
-                                style="padding: 12px 24px; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);">
+            <button id="submitBtn" type="submit" 
+                class="btn-tambah"
+                style="padding: 12px 24px; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);">
                             <span>💾</span> Simpan Data
                         </button>
                     </div>
@@ -203,7 +231,7 @@
         </div>
     </main>
 
-                    <script>
+    <script>
         // Password visibility toggle
         function togglePasswordVisibility() {
             const passwordField = document.getElementById('password');
@@ -255,47 +283,197 @@
             `;
         }
 
-        // Form submission
-        document.getElementById('userForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.innerHTML;
-            
-            // Show loading state
-            submitBtn.innerHTML = '<span class="loading"></span> Menyimpan...';
-            submitBtn.disabled = true;
-            
-            // Simulate form submission
-            setTimeout(() => {
-                alert('Data user berhasil disimpan!');
-                window.location.href = '';
-            }, 1500);
-        });
+        // Form submission (guarded)
+        (function(){
+            const userForm = document.getElementById('userForm');
+            if (!userForm) return;
+            userForm.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
 
-        // Enhanced form interactions
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add focus effects to form fields
-            const formFields = document.querySelectorAll('input, select');
-            formFields.forEach(field => {
-                const indicator = field.closest('div').querySelector('.field-indicator');
-                
-                field.addEventListener('focus', function() {
-                    if (indicator) {
-                        indicator.style.opacity = '1';
-                    }
-                });
-                
-                field.addEventListener('blur', function() {
-                    if (indicator) {
-                        indicator.style.opacity = '0';
-                    }
-                });
+                // Show loading state and disable button
+                if (submitBtn) {
+                    try { submitBtn.innerHTML = '<span class="loading"></span> Menyimpan...'; } catch(e){}
+                    try { submitBtn.disabled = true; } catch(e){}
+                }
+                // allow the form to submit normally to the server
             });
+        })();
+
+        // Enhanced form interactions and core logic
+        document.addEventListener('DOMContentLoaded', function() {
+            console.debug('user.blade script loaded');
+
+            // Get the select elements
+            const roleField = document.getElementById('role');
+            const kecField = document.getElementById('kecamatanField');
+            const nagariField = document.getElementById('nagariField');
+            const kecSelect = document.getElementById('kecamatan_id');
+            const nagSelect = document.getElementById('nagari_id');
+
+            // Store original Nagari options for client-side filtering fallback
+            const originalNagOptions = nagSelect ? Array.from(nagSelect.options).map(o => ({ value: o.value, text: o.text, parent: o.getAttribute('data-kecamatan') || '' })) : [];
+            let nagariPopulatedByAjaxFor = null;
+
+            // Dependent dropdown logic: filter nagari when kecamatan changes
+            async function filterNagariByKecamatan(kecValue){
+                console.debug('filterNagariByKecamatan called', { kecValue });
+
+                // clear
+                nagSelect.innerHTML = '';
+                // add default
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.text = 'Pilih Nagari';
+                nagSelect.appendChild(defaultOpt);
+
+                if (!kecValue) return;
+                
+                // try AJAX first (if URL template is correct)
+                try {
+                    const res = await fetch(`/api/kecamatan/${encodeURIComponent(kecValue)}/nagari`, { credentials: 'same-origin' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const list = data.nagari || [];
+                        list.forEach(item => {
+                            const name = item.nama_nagari || item.name || item.nama || item.nama_desa_kelurahan || '';
+                            const id = item.id || item.kode || item.kode_desa_kelurahan || '';
+                            if (!name) return;
+                            const o = document.createElement('option');
+                            o.value = id;
+                            o.text = name;
+                            o.setAttribute('data-kecamatan', kecValue);
+                            nagSelect.appendChild(o);
+                        });
+                        nagariPopulatedByAjaxFor = kecValue ? kecValue.toString() : null;
+                        console.debug('AJAX returned', { kecValue, listLength: list.length, optionsAfterFill: nagSelect.options.length });
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('AJAX nagari fetch failed, falling back to client-side filter.', e);
+                }
+
+                // fallback: client-side filter using original options
+                if (nagariPopulatedByAjaxFor && kecValue && nagariPopulatedByAjaxFor === kecValue.toString()) {
+                    console.debug('Skipping client-side fallback because AJAX already populated for', kecValue);
+                    return;
+                }
+
+                originalNagOptions.forEach(opt => {
+                    const parent = (opt.parent || '').toString().trim();
+                    const matchesId = parent === kecValue.toString();
+                    
+                    if (parent && matchesId) {
+                        const o = document.createElement('option');
+                        o.value = opt.value;
+                        o.text = opt.text;
+                        o.setAttribute('data-kecamatan', opt.parent);
+                        nagSelect.appendChild(o);
+                    }
+                });
+            }
+
+            if (kecSelect) {
+                kecSelect.addEventListener('change', function(){
+                    filterNagariByKecamatan(this.value);
+                });
+            }
+
+            // Role-based logic (MAIN FIX HERE)
+            if (roleField) {
+                roleField.addEventListener('change', function() {
+                    const val = this.value;
+                    
+                    // Reset field states first
+                    const resetFields = () => {
+                        [kecField, nagariField].forEach(field => {
+                            if (field) field.style.display = 'none';
+                        });
+                        [kecSelect, nagSelect].forEach(select => {
+                            if (select) {
+                                select.disabled = true;
+                                select.setAttribute('disabled', 'disabled');
+                                select.style.pointerEvents = 'none'; // NON-INTERACTIVE
+                                select.style.opacity = '0.6';
+                                select.selectedIndex = 0; // Reset value
+                                select.value = '';
+                                // Reset Nagari dropdown options when hidden
+                                if(select === nagSelect) filterNagariByKecamatan('');
+                            }
+                        });
+                    };
+
+                    resetFields(); // Start by resetting all
+
+                    if(val == '2'){
+                        // ROLE KECAMATAN: Show and enable Kecamatan only
+                        if (kecField) kecField.style.display = 'flex';
+                        if (kecSelect) {
+                            kecSelect.disabled = false;
+                            kecSelect.removeAttribute('disabled');
+                            kecSelect.style.pointerEvents = 'auto'; // FIX: Make it clickable
+                            kecSelect.style.opacity = '1';
+                            kecSelect.style.zIndex = '99999'; // FIX: High z-index to fix click issues
+                        }
+                    } else if(val == '3'){
+                        // ROLE NAGARI: Show and enable Kecamatan & Nagari
+                        if (kecField) kecField.style.display = 'flex';
+                        if (nagariField) nagariField.style.display = 'flex';
+
+                        if (kecSelect) {
+                            kecSelect.disabled = false;
+                            kecSelect.removeAttribute('disabled');
+                            kecSelect.style.pointerEvents = 'auto'; // FIX: Make it clickable
+                            kecSelect.style.opacity = '1';
+                            kecSelect.style.zIndex = '99999'; // FIX: High z-index
+                        }
+
+                        if (nagSelect) {
+                            nagSelect.disabled = false;
+                            nagSelect.removeAttribute('disabled');
+                            nagSelect.style.pointerEvents = 'auto'; // FIX: Make it clickable
+                            nagSelect.style.opacity = '1';
+                            nagSelect.style.zIndex = '99999'; // FIX: High z-index
+                        }
+                        
+                        // Try to populate nagari list if a kecamatan is already selected
+                        if (kecSelect && kecSelect.value) {
+                             filterNagariByKecamatan(kecSelect.value);
+                        } else if (kecSelect) {
+                            // If role is 3 but no kecamatan selected, try to auto-select the first one
+                             for (let i=0;i<kecSelect.options.length;i++){
+                                if (kecSelect.options[i].value && kecSelect.options[i].value !== ''){
+                                    kecSelect.value = kecSelect.options[i].value;
+                                    filterNagariByKecamatan(kecSelect.value);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // For Admin/Pegawai/Other roles, the fields are hidden and disabled by resetFields()
+                });
+            }
+            
+            // Trigger change event on load to set initial state
+            if (roleField) {
+                roleField.dispatchEvent(new Event('change'));
+            }
+
+            // when user picks a nagari, automatically set role to Nagari (3)
+            if (nagSelect) {
+                nagSelect.addEventListener('change', function(){
+                    if (this.value && roleField && roleField.value !== '3') {
+                        roleField.value = '3';
+                        roleField.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
 
             // Animate form fields on load
             const fieldContainers = document.querySelectorAll('form > div > div');
             fieldContainers.forEach((container, index) => {
+                // Skips kecamatan/nagari fields on initial load if they are hidden
+                if (container.style.display === 'none') return; 
+                
                 container.style.opacity = '0';
                 container.style.transform = 'translateY(30px)';
                 setTimeout(() => {
@@ -305,138 +483,48 @@
                 }, index * 100);
             });
 
-            // Password strength checker
+
+            // Other smaller listeners (password, focus effects, email validation)
+            
             const passwordField = document.getElementById('password');
-            passwordField.addEventListener('input', function() {
-                checkPasswordStrength(this.value);
+            if (passwordField) {
+                passwordField.addEventListener('input', function() {
+                    checkPasswordStrength(this.value);
+                });
+            }
+
+            const formFields = document.querySelectorAll('input, select');
+            formFields.forEach(field => {
+                const closestDiv = field.closest('div');
+                const indicator = closestDiv ? closestDiv.querySelector('.field-indicator') : null;
+
+                field.addEventListener('focus', function() {
+                    if (indicator) indicator.style.opacity = '1';
+                });
+
+                field.addEventListener('blur', function() {
+                    if (indicator) indicator.style.opacity = '0';
+                });
             });
 
-            // Username validation (no spaces, lowercase)
-            const usernameField = document.getElementById('username');
-            usernameField.addEventListener('input', function() {
-                this.value = this.value.toLowerCase().replace(/\s/g, '');
-            });
-
-            // Email validation feedback
             const emailField = document.getElementById('email');
-            emailField.addEventListener('blur', function() {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (this.value && !emailRegex.test(this.value)) {
-                    this.style.borderColor = '#ff6b6b';
-                    this.setCustomValidity('Format email tidak valid');
-                } else {
-                    this.style.borderColor = '#e0e0e0';
-                    this.setCustomValidity('');
-                }
-            });
+            if (emailField) {
+                emailField.addEventListener('blur', function() {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (this.value && !emailRegex.test(this.value)) {
+                        this.style.borderColor = '#ff6b6b';
+                        this.setCustomValidity('Format email tidak valid');
+                    } else {
+                        this.style.borderColor = '#e0e0e0';
+                        this.setCustomValidity('');
+                    }
+                });
+            }
 
-            // Role-based styling + show/hide area fields
-            const roleField = document.getElementById('role');
-            const kecField = document.getElementById('kecamatanField');
-            const nagariField = document.getElementById('nagariField');
-            roleField.addEventListener('change', function() {
-                const val = this.value;
-                // show kecamatan when role == 2, nagari when role == 3
-                if(val == '2'){
-                    kecField.style.display = '';
-                    nagariField.style.display = 'none';
-                } else if(val == '3'){
-                    kecField.style.display = 'none';
-                    nagariField.style.display = '';
-                } else {
-                    kecField.style.display = 'none';
-                    nagariField.style.display = 'none';
-                }
-            });
+            // HILANGKAN SEMUA FUNGSI YANG TIDAK TERPAKAI (normalize, notification functions)
+            // (Semua fungsi notifikasi telah dihapus dari skrip ini untuk fokus pada perbaikan form)
+
         });
-        function toggleNotifications() {
-            const dropdown = document.getElementById('notificationDropdown');
-            const isVisible = dropdown.style.display !== 'none';
-            
-            if (isVisible) {
-                dropdown.style.display = 'none';
-            } else {
-                dropdown.style.display = 'block';
-                // Add animation
-                dropdown.style.opacity = '0';
-                dropdown.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    dropdown.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                    dropdown.style.opacity = '1';
-                    dropdown.style.transform = 'translateY(0)';
-                }, 10);
-            }
-        }
-
-        function markAllAsRead() {
-            const badge = document.getElementById('notificationBadge');
-            const bell = document.getElementById('notificationBell');
-            const items = document.querySelectorAll('.notification-item');
-            
-            // Hide badge
-            badge.style.display = 'none';
-            
-            // Change bell to read state
-            bell.textContent = '🔕';
-            
-            // Mark all items as read (remove colored dots)
-            items.forEach(item => {
-                const dot = item.querySelector('div > div');
-                if (dot) {
-                    dot.style.background = '#e0e0e0';
-                }
-            });
-            
-            // Show success message
-            const dropdown = document.getElementById('notificationDropdown');
-            const successMsg = document.createElement('div');
-            successMsg.innerHTML = '<div style="padding: 12px; text-align: center; color: #4CAF50; font-size: 14px; font-weight: 500;">✓ Semua notifikasi telah dibaca</div>';
-            dropdown.appendChild(successMsg);
-            
-            setTimeout(() => {
-                successMsg.remove();
-                dropdown.style.display = 'none';
-            }, 2000);
-        }
-
-        // Close notification dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const notificationContainer = document.querySelector('.notification-container');
-            const dropdown = document.getElementById('notificationDropdown');
-            
-            if (!notificationContainer.contains(event.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
-
-        // Add notification bell animation
-        setInterval(() => {
-            const bell = document.getElementById('notificationBell');
-            const badge = document.getElementById('notificationBadge');
-            
-            if (badge.style.display !== 'none') {
-                bell.style.animation = 'bellShake 0.5s ease-in-out';
-                setTimeout(() => {
-                    bell.style.animation = '';
-                }, 500);
-            }
-        }, 5000);
-
-        // Add bell shake animation CSS
-        const bellStyle = document.createElement('style');
-        bellStyle.textContent = `
-            @keyframes bellShake {
-                0%, 100% { transform: rotate(0deg); }
-                25% { transform: rotate(-10deg); }
-                75% { transform: rotate(10deg); }
-            }
-            
-            .notification-container:hover .notification-icon {
-                transform: scale(1.1);
-                transition: transform 0.2s ease;
-            }
-        `;
-        document.head.appendChild(bellStyle);
     </script>
 </body>
 </html>

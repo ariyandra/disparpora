@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Cabor;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Document;
 
 class Atlet extends Authenticatable
 {
@@ -20,6 +21,11 @@ class Atlet extends Authenticatable
     public function cabor()
     {
         return $this->belongsTo(Cabor::class, 'id_cabor');
+    }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
     }
 
     public function asesmen()
