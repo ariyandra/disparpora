@@ -83,32 +83,29 @@
                                     <input id="searchAtlet" type="text" placeholder="Cari atlet..." style="width:100%; padding:10px 14px 10px 36px; border:1px solid #e5e7eb; border-radius:10px;">
                                     <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9ca3af;">🔍</span>
                                 </div>
-                                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                                    <input type="checkbox" id="selectAllVisible"> Pilih Semua (terlihat)
-                                </label>
                             </div>
                             <div class="overflow-auto" style="max-height: 420px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff;">
                                 <table class="min-w-full" style="width: 100%; border-collapse: collapse;">
                                     <thead style="position: sticky; top: 0; background: #f9fafb;">
                                         <tr>
-                                            <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Pilih</th>
                                             <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Nama Atlet</th>
                                             <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Status</th>
                                             <th style="padding: 10px; font-size:12px; color:#6b7280; text-align:left;">Keterangan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @if($dataAtlet->isEmpty())
+                                        <tr>
+                                            <td colspan="3" style="padding:16px; text-align:center; color:#9ca3af;">Anda belum memiliki atlet yang terdaftar. Silakan minta admin untuk menugaskan atlet kepada Anda terlebih dahulu.</td>
+                                        </tr>
+                                        @else
                                         @foreach ($dataAtlet as $atlet)
                                         <tr class="row-atlet" data-nama="{{ strtolower($atlet->nama) }}" style="border-top: 1px solid #f3f4f6;">
-                                            <td style="padding: 10px;">
-                                                <input type="checkbox" class="cb-include" name="rows[{{ $atlet->id }}][include]" value="1">
-                                            </td>
                                             <td class="cell-nama" style="padding: 10px; font-size:14px; color:#111827;">{{ $atlet->nama }}</td>
                                             <td style="padding: 10px;">
                                                 <select name="rows[{{ $atlet->id }}][status]" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px;">
                                                     <option value="">- Pilih -</option>
                                                     <option value="Hadir">Hadir</option>
-                                                    <option value="Tidak Hadir">Tidak Hadir</option>
                                                     <option value="Izin">Izin</option>
                                                     <option value="Sakit">Sakit</option>
                                                     <option value="Alpa">Alpa</option>
@@ -119,10 +116,16 @@
                                             </td>
                                         </tr>
                                         @endforeach
+                                    @endif
                                     </tbody>
                                 </table>
                             </div>
-                            <p style="margin-top:8px; font-size:12px; color:#6b7280;">Centang atlet yang ingin diabsen, lalu pilih status dan isi keterangan bila perlu.</p>
+                            @if($dataAtlet->isEmpty())
+                                <p style="margin-top:8px; font-size:14px; color:#b91c1c; font-weight:600;">Anda tidak dapat menyimpan absensi karena belum memiliki atlet yang terdaftar.</p>
+                            @else
+                                <p style="margin-top:8px; font-size:12px; color:#6b7280;">Pilih status untuk setiap atlet (Hadir / Tidak Hadir / Izin / Sakit / Alpa) dan isi keterangan bila perlu.</p>
+                            @endif
+                            <p style="margin-top:8px; font-size:12px; color:#6b7280;">Pilih status untuk setiap atlet (Hadir / Tidak Hadir / Izin / Sakit / Alpa) dan isi keterangan bila perlu.</p>
                         </div>
 
                         <!-- Tanggal -->
@@ -131,26 +134,27 @@
                             <label for="tanggal_absen" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
                                 📆 Tanggal <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <input type="date" 
-                                   id="tanggal_absen" 
-                                   name="tanggal_absen" 
-                                   required
+                <input type="date" 
+                    id="tanggal_absen" 
+                    name="tanggal_absen" 
+                    required
+                                   value="{{ old('tanggal_absen', \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d')) }}"
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Jadwal (Berlaku untuk semua yang dipilih) -->
-
+                        <!-- Jam (Berlaku untuk semua yang dipilih) -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
                             <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🕐 Jadwal <span style="color: #ff6b6b;">*</span>
+                                🕐 Jam <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <input type="time" 
-                                   id="jadwal" 
-                                   name="jadwal" 
-                                   required
+                <input type="time" 
+                    id="jadwal" 
+                    name="jadwal" 
+                    required
+                                   value="{{ old('jadwal', \Carbon\Carbon::now('Asia/Jakarta')->format('H:i')) }}"
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
@@ -187,7 +191,6 @@
         // Pencarian dan Pilih Semua (terlihat)
         (function(){
             const search = document.getElementById('searchAtlet');
-            const selectAll = document.getElementById('selectAllVisible');
             const rows = () => Array.from(document.querySelectorAll('.row-atlet'));
 
             function applyFilter(){
@@ -198,23 +201,8 @@
                 });
             }
 
-            function setSelectAllVisible(checked){
-                rows().forEach(tr => {
-                    if (tr.style.display !== 'none'){
-                        const cb = tr.querySelector('.cb-include');
-                        if (cb) cb.checked = checked;
-                    }
-                });
-            }
-
             search?.addEventListener('input', () => {
                 applyFilter();
-                // reset select all state after filtering
-                if (selectAll) selectAll.checked = false;
-            });
-
-            selectAll?.addEventListener('change', (e) => {
-                setSelectAllVisible(!!e.target.checked);
             });
 
             // initial apply (no filter)
@@ -252,10 +240,38 @@
                 }, index * 100);
             });
 
-            // Set default tanggal to today
-            const today = new Date().toISOString().split('T')[0];
-            const tgl = document.getElementById('tanggal_absen');
-            if (tgl) tgl.value = today;
+            // Set default tanggal_absen and jadwal (time) to Indonesian time (WIB, Asia/Jakarta)
+            // Compute Jakarta time from client's clock to display WIB regardless of user's local TZ
+            const clientNow = new Date();
+            clientNow.setSeconds(0,0);
+            function pad(n){ return String(n).padStart(2,'0'); }
+            // UTC milliseconds
+            const utcMs = clientNow.getTime() + (clientNow.getTimezoneOffset() * 60000);
+            // Jakarta is UTC+7
+            const jakartaOffsetHours = 7;
+            const jakartaMs = utcMs + (jakartaOffsetHours * 3600000);
+            const jakarta = new Date(jakartaMs);
+            // date input expects YYYY-MM-DD
+            const dateStr = jakarta.getFullYear() + '-' + pad(jakarta.getMonth()+1) + '-' + pad(jakarta.getDate());
+            // time input expects HH:MM
+            const timeStr = pad(jakarta.getHours()) + ':' + pad(jakarta.getMinutes());
+            const tanggalInput = document.getElementById('tanggal_absen');
+            const jadwalInput = document.getElementById('jadwal');
+            if (tanggalInput && !tanggalInput.value) {
+                tanggalInput.value = dateStr;
+            }
+            if (jadwalInput && !jadwalInput.value) {
+                jadwalInput.value = timeStr;
+            }
+
+                // Disable submit if there are no athletes
+                const submitBtn = document.getElementById('submitBtn');
+                const hasAtlet = {{ $dataAtlet->isNotEmpty() ? 'true' : 'false' }};
+                if (!hasAtlet && submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.6';
+                    submitBtn.style.cursor = 'not-allowed';
+                }
 
             // Add loading animation styles
             const style = document.createElement('style');

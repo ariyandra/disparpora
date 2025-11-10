@@ -62,7 +62,7 @@
                 </div>
             </div>
             
-            <div class="table-container-card mb-6">
+            <div id="rekapPrintable" class="table-container-card mb-6">
                 <div class="table-header">
                     <h2 class="table-title">Rekapitulasi Asesmen</h2>
                 </div>
@@ -89,7 +89,7 @@
                     <div class="md:col-span-4 flex gap-3">
                         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Terapkan</button>
                         <a href="{{ route('pelatih.asesmen.export.csv', request()->query()) }}" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">Export CSV</a>
-                        <button type="button" onclick="window.print()" class="px-4 py-2 bg-gray-700 text-white rounded-lg">Print / PDF</button>
+                        <button type="button" onclick="printRekap()" class="px-4 py-2 bg-gray-700 text-white rounded-lg">Print / PDF</button>
                     </div>
                 </form>
                 <div class="overflow-auto">
@@ -353,6 +353,59 @@
             }
         `;
         document.head.appendChild(bellStyle);
+
+        // Print only the rekap table (without filters, Atlet select or action buttons)
+        function printRekap(){
+            const rekapEl = document.getElementById('rekapPrintable');
+            if(!rekapEl){
+                alert('Bagian rekap tidak ditemukan.');
+                return;
+            }
+            const rekapTable = rekapEl.querySelector('table.data-table');
+            if(!rekapTable){
+                alert('Tabel rekap tidak ditemukan.');
+                return;
+            }
+
+            const startInput = document.querySelector('input[name="start_date"]');
+            const endInput = document.querySelector('input[name="end_date"]');
+            const startVal = startInput ? startInput.value : '';
+            const endVal = endInput ? endInput.value : '';
+
+            const win = window.open('', '_blank', 'toolbar=0,location=0,menubar=0');
+            const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l=>l.href);
+            let head = '<meta charset="utf-8"><title>Rekap Asesmen</title>';
+            cssLinks.forEach(href=>{ head += '<link rel="stylesheet" href="'+href+'">'; });
+            head += '<style>@page{size:A4;margin:8mm;}body{font-family:Arial,Helvetica,sans-serif;margin:6px;padding:0} h1{font-size:18px;margin-bottom:6px} h2{font-size:16px;margin:6px 0 10px 0} .meta{font-size:12px;margin-bottom:10px} table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;font-size:12px} thead th{background:#f3f6ff;color:#222;font-weight:700} /* scale to appear closer */ .print-scale{transform:scale(1.15);transform-origin:top left;width:calc(100% / 1.15);} </style>';
+
+            // Build a richer header similar to the provided banner.
+            // The image file you mentioned will be used: /public/models/download (1).jpg
+            // URL-encode the filename portion so browsers request it correctly.
+            const logoUrl = window.location.origin + encodeURI('/models/download (1).jpg');
+            const headerHtml = `
+                <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:6px;position:relative;">
+                    <img src="${logoUrl}" onerror="this.style.display='none'" style="height:64px;object-fit:contain;margin-top:0" />
+                    <div style="flex:1;text-align:center;padding-top:6px;">
+                        <div style="font-size:12px;font-weight:600;letter-spacing:0.5px;">PEMERINTAH KABUPATEN TANAH DATAR</div>
+                        <div style="font-size:18px;font-weight:800;letter-spacing:0.8px;">DINAS PARIWISATA, PEMUDA DAN OLAH RAGA</div>
+                        <div style="font-size:11px;">Komplek Benteng Van Der Capellen - Telepon (0752) 574821, 574364 &nbsp; Faks (0752) 574821</div>
+                        <div style="font-size:11px;">BATUSANGKAR</div>
+                    </div>
+                </div>
+                <hr style="border:none;border-top:2px solid #000;margin:8px 0 12px 0">
+            `;
+            const titleHtml = '<h2 style="margin:6px 0 10px 0;font-size:18px;">Rekapitulasi Asesmen</h2>';
+            const metaHtml = '<div class="meta">' + (startVal ? ('Tanggal Mulai: ' + startVal) : '') + (startVal && endVal ? ' &nbsp;|&nbsp; ' : '') + (endVal ? ('Tanggal Selesai: ' + endVal) : '') + '</div>';
+            const tableHtml = rekapTable.outerHTML;
+
+            const html = '<html><head>'+head+'</head><body><div class="print-scale">' + headerHtml + titleHtml + metaHtml + tableHtml + '</div></body></html>';
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            win.onload = function(){
+                setTimeout(()=>{ win.focus(); win.print(); win.close(); }, 300);
+            };
+        }
     </script>
 </body>
 </html>

@@ -104,7 +104,12 @@
                         </tr>
                     </thead>
                     <tbody id="atletTableBody">
-                        @foreach ($dataAtlet as $atlet)
+                        @if($dataAtlet->isEmpty())
+                            <tr>
+                                <td colspan="10" style="padding:16px; text-align:center; color:#9ca3af;">Anda belum memiliki atlet yang terdaftar. Silakan hubungi admin untuk menugaskan atlet kepada Anda.</td>
+                            </tr>
+                        @else
+                            @foreach ($dataAtlet as $atlet)
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $atlet->nama }}</td>
@@ -145,7 +150,8 @@
                                     @endif
                                 </td>
                             </tr>
-                        @endforeach
+                            @endforeach
+                        @endif
                     </tbody>
                 </table>
                 

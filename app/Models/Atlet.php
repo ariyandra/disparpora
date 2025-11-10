@@ -38,6 +38,11 @@ class Atlet extends Authenticatable
         return $this->hasMany(Absensi::class, 'id_atlet');
     }
 
+    public function pelatih()
+    {
+        return $this->belongsTo(Pelatih::class, 'id_pelatih');
+    }
+
     public function kecamatan()
     {
         return $this->belongsTo(Kecamatan::class, 'kecamatan_id');

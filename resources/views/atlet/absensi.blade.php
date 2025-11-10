@@ -75,7 +75,7 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $item->atlet->nama ?? 'N/A' }}</td> <!-- Menggunakan ?? untuk pencegahan error relasi -->
-                                <td>{{ $item->tanggal_absen }}</td>
+                                <td>{{ \Carbon\Carbon::parse($item->tanggal_absen)->toDateString() }}</td>
                                 <td>{{ substr($item->jadwal ?? 'N/A', 0, 5) }}</td>  <!-- Menggunakan relasi Jadwal -->
                                 <td>{{ $item->status }}</td>
                                 <td>{{ $item->keterangan }}</td>

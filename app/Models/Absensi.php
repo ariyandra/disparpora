@@ -9,6 +9,10 @@ class Absensi extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+    protected $casts = [
+        'jadwal_datetime' => 'datetime',
+        'tanggal_absen' => 'date',
+    ];
 
     public function atlet()
     {

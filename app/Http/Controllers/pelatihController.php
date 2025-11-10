@@ -14,6 +14,7 @@ use App\Models\Jadwal;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
+use Carbon\Carbon;
 
 class pelatihController extends Controller
 {
@@ -27,7 +28,16 @@ class pelatihController extends Controller
     }
 
     public function atlet(){
-        $dataAtlet = Atlet::with('documents')->where('status_verifikasi', 'approved')->get();
+        $pelatihUser = Auth::guard('pelatih')->user();
+        if($pelatihUser){
+            // only show athletes assigned to this pelatih
+            $dataAtlet = Atlet::with('documents')->where('status_verifikasi', 'approved')->where('id_pelatih', $pelatihUser->id)->get();
+            if($dataAtlet->isEmpty()){
+                session()->flash('warning', 'Tidak ada atlet yang terdaftar pada Anda. Halaman menampilkan atlet yang terhubung ke akun Anda.');
+            }
+        } else {
+            $dataAtlet = Atlet::with('documents')->where('status_verifikasi', 'approved')->get();
+        }
         return view('pelatih.atlet', compact('dataAtlet'));
     }
 
@@ -59,21 +69,19 @@ class pelatihController extends Controller
             $asesmenQuery->where('id_atlet', $atletId);
         }
 
-        // Jika pelatih punya id_cabor, batasi ke cabor tersebut
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
+        // Batasi asesmen hanya untuk atlet yang terdaftar pada pelatih ini
+        if($pelatihUser){
             $asesmenQuery->whereHas('atlet', function($q) use($pelatihUser){
-                $q->where('id_cabor', $pelatihUser->id_cabor);
+                $q->where('id_pelatih', $pelatihUser->id);
             });
         }
 
     $asesmenRows = $asesmenQuery->get();
 
-        // Jika hasil kosong karena filter cabor, fallback ke semua dan beri pesan
-        if($pelatihUser && !empty($pelatihUser->id_cabor) && $asesmenRows->isEmpty()){
-            session()->flash('warning', 'Data asesmen untuk cabang Anda tidak ditemukan; menampilkan semua asesmen sebagai fallback.');
-            $asesmenQuery = Asesmen::with(['atlet'])->whereBetween('tanggal_asesmen', [$start, $end]);
-            if($atletId){ $asesmenQuery->where('id_atlet', $atletId); }
-            $asesmenRows = $asesmenQuery->get();
+        // If result is empty because pelatih has no assigned athletes, keep empty and flash a warning (strict ownership)
+        if($pelatihUser && $asesmenRows->isEmpty()){
+            session()->flash('warning', 'Data asesmen untuk atlet Anda tidak ditemukan. Anda hanya dapat melihat asesmen untuk atlet yang terdaftar pada akun Anda.');
+            // keep $asesmenRows empty to enforce 1-atlet-1-pelatih ownership
         }
 
     // assign filtered asesmen collection to pass to the view
@@ -97,12 +105,12 @@ class pelatihController extends Controller
             'atlet_id' => $atletId,
         ];
 
-        // Batasi daftar atlet sesuai cabor pelatih, dengan fallback ke semua jika kosong
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            $atlets = Atlet::where('id_cabor', $pelatihUser->id_cabor)->get();
+        // Batasi daftar atlet hanya yang terkait ke pelatih ini (strict ownership)
+        if($pelatihUser){
+            $atlets = Atlet::where('id_pelatih', $pelatihUser->id)->get();
             if($atlets->isEmpty()){
-                session()->flash('warning', 'Tidak ditemukan atlet pada cabang Anda; menampilkan semua atlet sebagai fallback.');
-                $atlets = Atlet::all();
+                session()->flash('warning', 'Tidak ditemukan atlet yang terdaftar pada Anda. Anda hanya dapat memilih atlet yang terdaftar pada akun Anda.');
+                // keep $atlets empty to enforce ownership
             }
         } else {
             $atlets = Atlet::all();
@@ -113,11 +121,13 @@ class pelatihController extends Controller
 
     public function tambahAsesmen(){
         $pelatihUser = Auth::guard('pelatih')->user();
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            $dataAtlet = Atlet::where('id_cabor', $pelatihUser->id_cabor)->get();
+        // show only athletes assigned to this pelatih
+        if($pelatihUser){
+            $dataAtlet = Atlet::where('id_pelatih', $pelatihUser->id)->get();
             if($dataAtlet->isEmpty()){
-                session()->flash('warning', 'Tidak ditemukan atlet pada cabang Anda; menampilkan semua atlet sebagai fallback.');
-                $dataAtlet = Atlet::all();
+                // Strict: do NOT fall back to all athletes. Pelatih should only see their own athletes.
+                session()->flash('warning', 'Tidak ditemukan atlet yang terdaftar pada Anda. Anda hanya bisa menambahkan asesmen untuk atlet yang terdaftar pada Anda.');
+                // keep $dataAtlet as empty collection
             }
         } else {
             $dataAtlet = Atlet::all();
@@ -142,10 +152,10 @@ class pelatihController extends Controller
 
         $data = $validate->validated();
         $pelatihUser = Auth::guard('pelatih')->user();
-        // jika pelatih punya id_cabor, pastikan atlet milik cabor yang sama
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            if(!Atlet::where('id', $data['nama_atlet'])->where('id_cabor', $pelatihUser->id_cabor)->exists()){
-                return redirect()->back()->with('error', 'Anda tidak diperbolehkan menambahkan asesmen untuk atlet di luar cabang Anda.');
+        // pastikan atlet yang dinilai memang terdaftar pada pelatih ini
+        if($pelatihUser){
+            if(!Atlet::where('id', $data['nama_atlet'])->where('id_pelatih', $pelatihUser->id)->exists()){
+                return redirect()->back()->with('error', 'Anda tidak diperbolehkan menambahkan asesmen untuk atlet yang bukan milik Anda.');
             }
         }
         $asesmen = new Asesmen();
@@ -171,10 +181,10 @@ class pelatihController extends Controller
 
     public function absensi(Request $request){
         $pelatihUser = Auth::guard('pelatih')->user();
-        // Jika pelatih memiliki id_cabor, batasi tampilan absensi hanya untuk atlet cabor tersebut
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
+        // Batasi tampilan absensi hanya untuk atlet yang terdaftar pada pelatih ini
+        if($pelatihUser){
             $dataAbsensi = Absensi::whereHas('atlet', function($q) use($pelatihUser){
-                $q->where('id_cabor', $pelatihUser->id_cabor);
+                $q->where('id_pelatih', $pelatihUser->id);
             })->get();
         } else {
             $dataAbsensi = Absensi::all();
@@ -190,9 +200,9 @@ class pelatihController extends Controller
 
         $absensiQuery = Absensi::with(['atlet'])
             ->whereBetween('tanggal_absen', [$start, $end]);
-        if(isset($pelatihUser) && !empty($pelatihUser->id_cabor)){
+        if(isset($pelatihUser)){
             $absensiQuery->whereHas('atlet', function($q) use($pelatihUser){
-                $q->where('id_cabor', $pelatihUser->id_cabor);
+                $q->where('id_pelatih', $pelatihUser->id);
             });
         }
         if($atletId){
@@ -224,9 +234,9 @@ class pelatihController extends Controller
             'end_date' => $end,
             'atlet_id' => $atletId,
         ];
-        // Batasi daftar atlet di filter/selector sesuai cabor pelatih
-        if(isset($pelatihUser) && !empty($pelatihUser->id_cabor)){
-            $atlets = Atlet::where('id_cabor', $pelatihUser->id_cabor)->get();
+        // Batasi daftar atlet di filter/selector hanya ke atlet milik pelatih
+        if(isset($pelatihUser)){
+            $atlets = Atlet::where('id_pelatih', $pelatihUser->id)->get();
         } else {
             $atlets = Atlet::all();
         }
@@ -246,24 +256,26 @@ class pelatihController extends Controller
         $asesmenQuery = Asesmen::with(['atlet'])
             ->whereBetween('tanggal_asesmen', [$start, $end]);
         if($atletId){ $asesmenQuery->where('id_atlet', $atletId); }
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
+        if($pelatihUser){
             $asesmenQuery->whereHas('atlet', function($q) use($pelatihUser){
-                $q->where('id_cabor', $pelatihUser->id_cabor);
+                $q->where('id_pelatih', $pelatihUser->id);
             });
         }
         $asesmenRows = $asesmenQuery->get();
-        // fallback jika kosong
-        if($pelatihUser && !empty($pelatihUser->id_cabor) && $asesmenRows->isEmpty()){
-            session()->flash('warning', 'Data asesmen untuk cabang Anda tidak ditemukan; menampilkan semua asesmen sebagai fallback.');
-            $asesmenQuery = Asesmen::with(['atlet'])->whereBetween('tanggal_asesmen', [$start, $end]);
-            if($atletId){ $asesmenQuery->where('id_atlet', $atletId); }
-            $asesmenRows = $asesmenQuery->get();
+        // If pelatih has no assigned athletes, do not fall back to showing all asesmen — enforce ownership
+        if($pelatihUser && $asesmenRows->isEmpty()){
+            session()->flash('warning', 'Data asesmen untuk atlet Anda tidak ditemukan. Hanya asesmen untuk atlet yang terdaftar pada akun Anda akan ditampilkan.');
+            // keep $asesmenRows empty to enforce 1-atlet-1-pelatih
         }
         $asesmenRows = $asesmenRows->groupBy('id_atlet');
 
-        $lines = [];
-        $header = ['Atlet','Jumlah','Rata2 Fisik','Rata2 Teknik','Rata2 Sikap','Terakhir Asesmen'];
-        $lines[] = implode(',', array_map(function($v){ return '"'.str_replace('"','""',$v).'"'; }, $header));
+    $lines = [];
+    // Use semicolon delimiter and add title rows for Excel on Windows
+    $delimiter = ';';
+    $lines[] = '"DISPARPORA"';
+    $lines[] = '"rekapitulasi asesmen"';
+    $header = ['Atlet','Jumlah','Rata2 Fisik','Rata2 Teknik','Rata2 Sikap','Terakhir Asesmen'];
+    $lines[] = implode($delimiter, array_map(function($v){ return '"'.str_replace('"','""',$v).'"'; }, $header));
         foreach($asesmenRows as $rows){
             $row = [
                 optional($rows->first()->atlet)->nama,
@@ -273,12 +285,13 @@ class pelatihController extends Controller
                 round($rows->avg('aspek_sikap'),2),
                 $rows->sortByDesc('tanggal_asesmen')->first()->tanggal_asesmen,
             ];
-            $lines[] = implode(',', array_map(function($v){ return '"'.str_replace('"','""',(string)$v).'"'; }, $row));
+            $lines[] = implode($delimiter, array_map(function($v){ return '"'.str_replace('"','""',(string)$v).'"'; }, $row));
         }
-        $csv = implode("\r\n", $lines);
+        // Prepend UTF-8 BOM so Excel recognizes UTF-8 encoding
+        $csv = "\xEF\xBB\xBF" . implode("\r\n", $lines);
         $filename = 'rekap_asesmen_pelatih_'.str_replace('-', '', $start).'_'.str_replace('-', '', $end).'.csv';
         return response($csv)
-            ->header('Content-Type', 'text/csv')
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
@@ -294,24 +307,30 @@ class pelatihController extends Controller
         $absensiQuery = Absensi::with(['atlet'])
             ->whereBetween('tanggal_absen', [$start, $end]);
         if($atletId){ $absensiQuery->where('id_atlet', $atletId); }
-        // Batasi export ke cabor pelatih jika pelatih punya id_cabor
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
+    // Batasi export ke atlet pelatih jika pelatih punya atlet (ownership-based filtering)
+        if($pelatihUser){
             $absensiQuery->whereHas('atlet', function($q) use($pelatihUser){
-                $q->where('id_cabor', $pelatihUser->id_cabor);
+                $q->where('id_pelatih', $pelatihUser->id);
             });
         }
         $grouped = $absensiQuery->get()->groupBy('id_atlet');
 
         $lines = [];
-        $header = ['Atlet','Pertemuan','Hadir','Sakit','Izin','Alpa','% Hadir'];
-        $lines[] = implode(',', array_map(function($v){ return '"'.str_replace('"','""',$v).'"'; }, $header));
+    // Use semicolon as delimiter for CSV to better match Excel's locale on Windows
+    $delimiter = ';';
+    // Add top title rows as requested so the CSV shows a header block
+    $lines[] = '"DISPARPORA"';
+    $lines[] = '"rekapitulasi absensi"';
+    $header = ['Atlet','Pertemuan','Hadir','Sakit','Izin','Alpa','%Hadir'];
+        $lines[] = implode($delimiter, array_map(function($v){ return '"'.str_replace('"','""',$v).'"'; }, $header));
         foreach($grouped as $rows){
             $total = $rows->count();
             $hadir = $rows->where('status', 'Hadir')->count();
             $sakit = $rows->where('status', 'Sakit')->count();
             $izin = $rows->where('status', 'Izin')->count();
             $alpa = $rows->where('status', 'Alpa')->count();
-            $persen = $total ? round(($hadir/$total)*100,2) : '';
+            // For CSV export show percentage as integer (no trailing '%') to match spreadsheet view
+            $persen = $total ? round(($hadir/$total)*100, 0) : '';
             $row = [
                 optional($rows->first()->atlet)->nama,
                 $total,
@@ -321,20 +340,43 @@ class pelatihController extends Controller
                 $alpa,
                 $persen,
             ];
-            $lines[] = implode(',', array_map(function($v){ return '"'.str_replace('"','""',(string)$v).'"'; }, $row));
+            $lines[] = implode($delimiter, array_map(function($v){ return '"'.str_replace('"','""',(string)$v).'"'; }, $row));
         }
-        $csv = implode("\r\n", $lines);
+        // Prepend UTF-8 BOM so Excel on Windows recognizes UTF-8 and splits columns correctly
+        $csv = "\xEF\xBB\xBF" . implode("\r\n", $lines);
         $filename = 'rekap_absensi_pelatih_'.str_replace('-', '', $start).'_'.str_replace('-', '', $end).'.csv';
         return response($csv)
-            ->header('Content-Type', 'text/csv')
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
     public function isiAbsensi(){
         $pelatihUser = Auth::guard('pelatih')->user();
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            $dataAtlet = Atlet::where('id_cabor', $pelatihUser->id_cabor)->get();
-            $dataJadwal = Jadwal::where('id_cabor', $pelatihUser->id_cabor)->get();
+        // show only athletes assigned to this pelatih
+        if($pelatihUser){
+            $dataAtlet = Atlet::where('id_pelatih', $pelatihUser->id)->get();
+            if($dataAtlet->isEmpty()){
+                // Strict policy: do NOT fall back to all athletes. Pelatih may only operate on assigned athletes.
+                session()->flash('warning', 'Tidak ditemukan atlet yang terdaftar pada Anda. Anda hanya bisa memasukkan absensi untuk atlet yang terdaftar pada Anda.');
+                // leave $dataAtlet as empty collection
+            }
+                // keep jadwal limited to cabors of athletes assigned to this pelatih if any
+                // (compute from assigned athletes so pelatih with multiple cabors sees only relevant jadwal)
+                // use distinct DB query to avoid complex collection chaining that may fail on older environments
+                $caborIds = Atlet::where('id_pelatih', $pelatihUser->id)
+                    ->whereNotNull('id_cabor')
+                    ->distinct()
+                    ->pluck('id_cabor')
+                    ->toArray();
+            if (!empty($caborIds)) {
+                $dataJadwal = Jadwal::whereIn('id_cabor', $caborIds)->get();
+            } elseif (!empty($pelatihUser->id_cabor)) {
+                // legacy fallback: if pelatih has a single id_cabor set on profile
+                $dataJadwal = Jadwal::where('id_cabor', $pelatihUser->id_cabor)->get();
+            } else {
+                // strict: no assigned cabors and no profile cabor -> no jadwal to choose
+                $dataJadwal = collect();
+            }
         } else {
             $dataAtlet = Atlet::all();
             $dataJadwal = Jadwal::all();
@@ -346,23 +388,23 @@ class pelatihController extends Controller
         $pelatihUser = Auth::guard('pelatih')->user();
         // Jika ada pengiriman batch (rows[])
         if ($request->has('rows') && is_array($request->input('rows'))) {
+            // Basic presence check; we'll parse jadwal flexibly (either datetime-local or date+time)
             $validate = Validator::make($request->all(), [
-                'tanggal_absen' => 'required|date',
-                'jadwal' => 'required|date_format:H:i',
                 'rows' => 'required|array',
+                'jadwal' => 'required|string',
             ]);
 
             if($validate->fails()){
                 return redirect()->back()->with('error', 'Data yang anda masukkan tidak valid. Silakan periksa kembali.');
             }
 
-            $tanggal = $request->input('tanggal_absen');
-            $jam = $request->input('jadwal');
+            $rawJadwal = $request->input('jadwal');
+            $tanggal = $request->input('tanggal_absen'); // may be present for backward compatibility
             $rows = collect($request->input('rows'));
 
             // Saring hanya yang dipilih atau memiliki status
             $selected = $rows->filter(function($r){
-                return (isset($r['include']) && $r['include']) || (!empty($r['status'] ?? null));
+                return (!empty($r['status'] ?? null));
             });
 
             if ($selected->isEmpty()){
@@ -371,14 +413,32 @@ class pelatihController extends Controller
 
             $allowedStatus = ['Hadir','Tidak Hadir','Izin','Sakit','Alpa'];
 
+            // Normalise jadwal input to Y-m-d H:i:s (accept either datetime-local like 2025-11-10T14:30 or time-only H:i with tanggal_absen)
+            $jadwal_dt = null;
+            try {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $rawJadwal)) {
+                    $jadwal_dt = Carbon::createFromFormat('Y-m-d\TH:i', $rawJadwal)->format('Y-m-d H:i:s');
+                } elseif (!empty($tanggal) && preg_match('/^\d{2}:\d{2}$/', $rawJadwal)) {
+                    $jadwal_dt = Carbon::parse($tanggal . ' ' . $rawJadwal)->format('Y-m-d H:i:s');
+                } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:?\d{0,2}$/', $rawJadwal)) {
+                    $jadwal_dt = Carbon::parse($rawJadwal)->format('Y-m-d H:i:s');
+                }
+            } catch (\Exception $e) {
+                $jadwal_dt = null;
+            }
+
+            if (!$jadwal_dt) {
+                return redirect()->back()->with('error', 'Format jadwal tidak dikenali. Gunakan datetime (YYYY-MM-DDTHH:MM) atau pilih tanggal + jam.');
+            }
+
             $created = 0;
             foreach($selected as $atletId => $payload){
                 // Validasi atlet dan status per-baris
                 if (!Atlet::where('id', $atletId)->exists()) { continue; }
-                // pastikan atlet termasuk cabor pelatih jika pelatih punya id_cabor
-                if(isset($pelatihUser) && !empty($pelatihUser->id_cabor)){
-                    if(!Atlet::where('id', $atletId)->where('id_cabor', $pelatihUser->id_cabor)->exists()){
-                        continue; // skip atlet di luar cabor pelatih
+                // pastikan atlet termasuk atlet milik pelatih ini
+                if(isset($pelatihUser)){
+                    if(!Atlet::where('id', $atletId)->where('id_pelatih', $pelatihUser->id)->exists()){
+                        continue; // skip atlet yang bukan milik pelatih ini
                     }
                 }
                 $status = $payload['status'] ?? null;
@@ -387,9 +447,15 @@ class pelatihController extends Controller
 
                 $absensi = new Absensi();
                 $absensi->id_atlet = $atletId;
-                // Catatan: sistem saat ini menggunakan kolom 'jadwal' bertipe jam string
-                $absensi->jadwal = $jam;
-                $absensi->tanggal_absen = $tanggal;
+                // store both new datetime and keep tanggal_absen for compatibility
+                $absensi->jadwal_datetime = $jadwal_dt;
+                    if (!empty($tanggal)) {
+                    // allow model casting to handle string/date
+                    $absensi->tanggal_absen = $tanggal;
+                } else {
+                    // fallback to date portion of jadwal — store as Carbon instance so casting is consistent
+                    $absensi->tanggal_absen = Carbon::parse($jadwal_dt);
+                }
                 $absensi->status = $status;
                 $absensi->keterangan = $ket;
                 if($absensi->save()){
@@ -406,11 +472,11 @@ class pelatihController extends Controller
 
         // Backward compatibility: input tunggal
         $validate = Validator::make($request->all(), [
-            'nama_atlet' => 'required|string|max:255',
+            'nama_atlet' => 'nullable|string|max:255',
             'atlet_id' => 'required|exists:atlets,id',
-            'jadwal' => 'required|date_format:H:i',
+            'jadwal' => 'required|string',
             'status' => 'required|string|max:15',
-            'tanggal_absen' => 'required|date',
+            'tanggal_absen' => 'nullable|date',
             'keterangan' => 'required|string',
         ]);
 
@@ -419,16 +485,35 @@ class pelatihController extends Controller
         }
 
         $data = $validate->validated();
-        // pastikan atlet yang dikirim milik cabor pelatih
-        if(isset($pelatihUser) && !empty($pelatihUser->id_cabor)){
-            if(!Atlet::where('id', $data['atlet_id'])->where('id_cabor', $pelatihUser->id_cabor)->exists()){
-                return redirect()->back()->with('error', 'Anda tidak diperbolehkan memasukkan absensi untuk atlet di luar cabang Anda.');
+        // pastikan atlet yang dikirim memang terdaftar pada pelatih ini
+        if(isset($pelatihUser)){
+            if(!Atlet::where('id', $data['atlet_id'])->where('id_pelatih', $pelatihUser->id)->exists()){
+                return redirect()->back()->with('error', 'Anda tidak diperbolehkan memasukkan absensi untuk atlet yang bukan milik Anda.');
             }
         }
+        // Normalize jadwal input: accept datetime-local (Y-m-d\TH:i) or fall back to tanggal_absen + H:i
+        $rawJadwal = $data['jadwal'];
+        $jadwal_dt = null;
+        try {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::createFromFormat('Y-m-d\TH:i', $rawJadwal)->format('Y-m-d H:i:s');
+            } elseif (!empty($data['tanggal_absen']) && preg_match('/^\d{2}:\d{2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::parse($data['tanggal_absen'] . ' ' . $rawJadwal)->format('Y-m-d H:i:s');
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:?\d{0,2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::parse($rawJadwal)->format('Y-m-d H:i:s');
+            }
+        } catch (\Exception $e) {
+            $jadwal_dt = null;
+        }
+
+        if (!$jadwal_dt) {
+            return redirect()->back()->with('error', 'Format jadwal tidak dikenali. Gunakan datetime (YYYY-MM-DDTHH:MM) atau pilih tanggal + jam.');
+        }
+
         $absensi = new Absensi();
         $absensi->id_atlet = $data['atlet_id'];
-        $absensi->jadwal = $data['jadwal'];
-        $absensi->tanggal_absen = $data['tanggal_absen'];
+    $absensi->jadwal_datetime = $jadwal_dt;
+    $absensi->tanggal_absen = !empty($data['tanggal_absen']) ? $data['tanggal_absen'] : Carbon::parse($jadwal_dt);
         $absensi->status = $data['status'];
         $absensi->keterangan = $data['keterangan'];
 
@@ -459,12 +544,12 @@ class pelatihController extends Controller
 
         $dataAbsensi = Absensi::where('id', $id)->first();
         $pelatihUser = Auth::guard('pelatih')->user();
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            // jika absensi terkait atlet di luar cabor pelatih, tolak
-            if($dataAbsensi && $dataAbsensi->atlet && $dataAbsensi->atlet->id_cabor != $pelatihUser->id_cabor){
-                return redirect()->back()->with('error', 'Anda tidak diperbolehkan mengubah absensi untuk atlet di luar cabang Anda.');
+        if($pelatihUser){
+            // jika absensi terkait atlet yang bukan milik pelatih, tolak
+            if($dataAbsensi && $dataAbsensi->atlet && $dataAbsensi->atlet->id_pelatih != $pelatihUser->id){
+                return redirect()->back()->with('error', 'Anda tidak diperbolehkan mengubah absensi untuk atlet yang bukan milik Anda.');
             }
-            $dataAtlet = Atlet::where('id_cabor', $pelatihUser->id_cabor)->get();
+            $dataAtlet = Atlet::where('id_pelatih', $pelatihUser->id)->get();
         } else {
             $dataAtlet = Atlet::all();
         }
@@ -475,7 +560,7 @@ class pelatihController extends Controller
         $validate = Validator::make($request->all(), [
             'id_absensi' => 'required|exists:absensis,id',
             'atlet_id' => 'required|exists:atlets,id',
-            'jadwal' => 'required|date_format:H:i',
+            'jadwal' => 'required|string',
             'status' => 'required|string|max:15',
             'tanggal_absen' => 'required|date',
             'keterangan' => 'required|string',
@@ -491,15 +576,34 @@ class pelatihController extends Controller
         if(!$absensi){
             return redirect()->route('pelatih.absensi')->with('error', 'Data absensi tidak ditemukan.');
         }
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            // pastikan atlet target milik cabor pelatih
-            if(!Atlet::where('id', $data['atlet_id'])->where('id_cabor', $pelatihUser->id_cabor)->exists()){
-                return redirect()->route('pelatih.absensi')->with('error', 'Anda tidak diperbolehkan mengganti absensi ke atlet di luar cabang Anda.');
+        if($pelatihUser){
+            // pastikan atlet target milik pelatih ini
+            if(!Atlet::where('id', $data['atlet_id'])->where('id_pelatih', $pelatihUser->id)->exists()){
+                return redirect()->route('pelatih.absensi')->with('error', 'Anda tidak diperbolehkan mengganti absensi ke atlet yang bukan milik Anda.');
             }
         }
 
+        // Normalize jadwal and store in jadwal_datetime
+        $rawJadwal = $data['jadwal'];
+        $jadwal_dt = null;
+        try {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::createFromFormat('Y-m-d\TH:i', $rawJadwal)->format('Y-m-d H:i:s');
+            } elseif (preg_match('/^\d{2}:\d{2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::parse($data['tanggal_absen'] . ' ' . $rawJadwal)->format('Y-m-d H:i:s');
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:?\d{0,2}$/', $rawJadwal)) {
+                $jadwal_dt = Carbon::parse($rawJadwal)->format('Y-m-d H:i:s');
+            }
+        } catch (\Exception $e) {
+            $jadwal_dt = null;
+        }
+
+        if (!$jadwal_dt) {
+            return redirect()->route('absensi.pelatih')->with('error', 'Format jadwal tidak dikenali saat mengubah absensi.');
+        }
+
         $absensi->id_atlet = $data['atlet_id'];
-        $absensi->jadwal = $data['jadwal'];
+        $absensi->jadwal_datetime = $jadwal_dt;
         $absensi->tanggal_absen = $data['tanggal_absen'];
         $absensi->status = $data['status'];
         $absensi->keterangan = $data['keterangan'];
@@ -532,9 +636,9 @@ class pelatihController extends Controller
             return redirect()->route('pelatih.absensi')->with('error', 'Data absensi tidak ditemukan.');
         }
         $pelatihUser = Auth::guard('pelatih')->user();
-        if($pelatihUser && !empty($pelatihUser->id_cabor)){
-            if(!$absensi->atlet || $absensi->atlet->id_cabor != $pelatihUser->id_cabor){
-                return redirect()->route('pelatih.absensi')->with('error', 'Anda tidak diperbolehkan menghapus absensi atlet di luar cabang Anda.');
+        if($pelatihUser){
+            if(!$absensi->atlet || $absensi->atlet->id_pelatih != $pelatihUser->id){
+                return redirect()->route('pelatih.absensi')->with('error', 'Anda tidak diperbolehkan menghapus absensi atlet yang bukan milik Anda.');
             }
         }
 

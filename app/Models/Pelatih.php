@@ -21,6 +21,11 @@ class Pelatih extends Authenticatable
         return $this->hasMany(Asesmen::class, 'id_pelatih');
     }
 
+    public function atlets()
+    {
+        return $this->hasMany(Atlet::class, 'id_pelatih');
+    }
+
     public function created_by()
     {
         return $this->belongsTo(User::class, 'created_by');

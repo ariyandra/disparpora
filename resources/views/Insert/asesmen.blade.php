@@ -88,9 +88,13 @@
                                     onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                     onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                                 <option value="">Pilih Nama Atlet</option>
-                                @foreach ($dataAtlet as $atlet)
-                                <option value="{{ $atlet->id }}">{{ $atlet->nama }}</option>
-                                @endforeach
+                                @if($dataAtlet->isEmpty())
+                                    <option value="">-- Tidak ada atlet terdaftar --</option>
+                                @else
+                                    @foreach ($dataAtlet as $atlet)
+                                    <option value="{{ $atlet->id }}">{{ $atlet->nama }}</option>
+                                    @endforeach
+                                @endif
                             </select>
                         </div>
 
@@ -178,6 +182,7 @@
                             <span>✕</span> Batal
                         </a>
                         <button type="submit" 
+                                id="submitAsesmen"
                                 class="btn-tambah" 
                                 style="padding: 12px 24px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 25px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);"
                                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(102, 126, 234, 0.4)'"
@@ -226,6 +231,15 @@
             // Set default tanggal to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('tanggal').value = today;
+
+                // Disable submit if pelatih has no athletes
+                const submitAsesmen = document.getElementById('submitAsesmen');
+                const hasAtletAsesmen = {{ $dataAtlet->isNotEmpty() ? 'true' : 'false' }};
+                if (!hasAtletAsesmen && submitAsesmen) {
+                    submitAsesmen.disabled = true;
+                    submitAsesmen.style.opacity = '0.6';
+                    submitAsesmen.style.cursor = 'not-allowed';
+                }
 
             // Add loading animation styles
             const style = document.createElement('style');

@@ -9,6 +9,19 @@
     <!-- Asumsi file CSS ini sudah ada atau perlu Anda tambahkan di public/css -->
     <link href="{{ asset('css/pelatih.css') }}" rel="stylesheet">
     <link href="{{ asset('css/pelatih-custom.css') }}" rel="stylesheet">
+    <style>
+        /* Ensure full page prints (override any global "print only #printable" rules) */
+        @media print {
+            /* make all elements visible for this page */
+            body * { visibility: visible !important; }
+            /* keep layout full width */
+            html, body { height: auto !important; }
+            /* hide elements explicitly marked no-print */
+            .no-print { display: none !important; }
+            /* prevent fixed navbar from covering content in print */
+            .navbar { position: static !important; }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -62,7 +75,7 @@
                 </div>
             </div>
             
-            <div class="table-container-card mb-6">
+                <div id="rekapPrintable" class="table-container-card mb-6">
                 <div class="table-header">
                     <h2 class="table-title">Rekapitulasi Absensi</h2>
                 </div>
@@ -89,7 +102,7 @@
                     <div class="md:col-span-4 flex gap-3">
                         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Terapkan</button>
                         <a href="{{ route('pelatih.absensi.export.csv', request()->query()) }}" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">Export CSV</a>
-                        <button type="button" onclick="window.print()" class="px-4 py-2 bg-gray-700 text-white rounded-lg">Print / PDF</button>
+                        <button type="button" onclick="printRekap()" class="px-4 py-2 bg-gray-700 text-white rounded-lg">Print / PDF</button>
                     </div>
                 </form>
                 <div class="overflow-auto">
@@ -102,7 +115,7 @@
                                 <th>Sakit</th>
                                 <th>Izin</th>
                                 <th>Alpa</th>
-                                <th>% Hadir</th>
+                                <th>%Hadir</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -115,7 +128,7 @@
                                     <td>{{ $r['sakit'] }}</td>
                                     <td>{{ $r['izin'] }}</td>
                                     <td>{{ $r['alpa'] }}</td>
-                                    <td>{{ $r['persen_hadir'] }}</td>
+                                    <td>{{ isset($r['persen_hadir']) ? $r['persen_hadir'].'%' : '-' }}</td>
                                 </tr>
                                 @empty
                                 <tr>
@@ -155,7 +168,7 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $item->atlet->nama ?? 'N/A' }}</td> <!-- Menggunakan ?? untuk pencegahan error relasi -->
-                                <td>{{ $item->tanggal_absen }}</td>
+                                <td>{{ \Carbon\Carbon::parse($item->tanggal_absen)->toDateString() }}</td>
                                 <td>{{ substr($item->jadwal ?? 'N/A', 0, 5) }}</td>  <!-- Menggunakan relasi Jadwal -->
                                 <td>{{ $item->status }}</td>
                                 <td>{{ $item->keterangan }}</td>
@@ -335,6 +348,71 @@
                     dropdown.style.transform = 'translateY(0)';
                 }, 10);
             }
+        }
+
+        // Print only the rekap table (without filters, Atlet select or action buttons)
+        function printRekap(){
+            const rekapEl = document.getElementById('rekapPrintable');
+            if(!rekapEl){
+                alert('Bagian rekap tidak ditemukan.');
+                return;
+            }
+            // find the rekap table inside the container (first .data-table)
+            const rekapTable = rekapEl.querySelector('table.data-table');
+            if(!rekapTable){
+                alert('Tabel rekap tidak ditemukan.');
+                return;
+            }
+
+            // read date filters to show in header (if present)
+            const startInput = document.querySelector('input[name="start_date"]');
+            const endInput = document.querySelector('input[name="end_date"]');
+            const startVal = startInput ? startInput.value : '';
+            const endVal = endInput ? endInput.value : '';
+
+            const win = window.open('', '_blank', 'toolbar=0,location=0,menubar=0');
+            const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l=>l.href);
+            let head = '<meta charset="utf-8"><title>Rekap Absensi</title>';
+            // include same stylesheets (if accessible)
+            cssLinks.forEach(href=>{ head += '<link rel="stylesheet" href="'+href+'">'; });
+            // minimal print styles to make table readable
+            head += '<style>@page{size:A4;margin:12mm;}body{font-family:Arial,Helvetica,sans-serif;margin:6px 10px;padding:0;color:#111} h1{font-size:18px;margin-bottom:6px} h2{font-size:18px;margin:4px 0 12px 0;font-weight:700} .meta{font-size:12px;margin:4px 0 14px 0} table{border-collapse:collapse;width:100%;table-layout:fixed} th,td{border:1px solid #d5d9e2;padding:6px 8px;text-align:left;font-size:12px;vertical-align:top} thead th{background:#f0f3f9;color:#222;font-weight:700} .letterhead{display:flex;align-items:flex-start;gap:14px} .letterhead img{height:82px} .lh-text{flex:1;text-align:center} .gov{font-size:12px;font-weight:600;letter-spacing:0.4px} .dept{font-size:20px;font-weight:900;letter-spacing:0.8px} .addr{font-size:11px;margin-top:2px;line-height:1.3} .city{font-size:11px} .contact-row{display:flex;justify-content:center;gap:18px;margin-top:6px;font-size:11px} .contact-row .sep{width:2px;background:#000;height:14px;display:inline-block;align-self:center} .divider-thick{border-top:3px solid #000;margin:6px 0 2px 0} .divider-thin{border-top:1px solid #000;margin:0 0 12px 0} </style>';
+
+            // Build printable HTML: department header + title + date range + the table only
+            // Build a richer header similar to the provided banner.
+            // Use a public asset path for the letterhead logo. Place your file at public/images/logo-surat.jpg
+            // You can change the file name below if needed.
+            const logoUrl = "{{ asset('images/logo-surat.jpg') }}";
+            const headerHtml = `
+                <div class="letterhead">
+                    <img id="print-logo" src="${logoUrl}" alt="Logo" onerror="this.style.display='none'" style="object-fit:contain;" />
+                    <div class="lh-text" style="padding-top:1px;">
+                        <div class="gov">PEMERINTAH KABUPATEN TANAH DATAR</div>
+                        <div class="dept">DINAS PARIWISATA, PEMUDA DAN OLAH RAGA</div>
+                        <div class="addr">Komplek Benteng Van Der Capellen - Telepon (0752) 574821, 574364 &nbsp; Faks (0752) 574821</div>
+                        <div class="city">BATUSANGKAR</div>
+                        <div class="contact-row"><span>Website: www.tanahdatar.go.id</span><span class="sep"></span><span>Email: disparpora@tanahdatar.go.id</span></div>
+                    </div>
+                </div>
+                <div class="divider-thick"></div>
+                <div class="divider-thin"></div>
+            `;
+            const titleHtml = '<h2 style="margin:6px 0 10px 0;font-size:18px;">Rekapitulasi Absensi</h2>';
+            const metaHtml = '<div class="meta">' + (startVal ? ('Tanggal Mulai: ' + startVal) : '') + (startVal && endVal ? ' &nbsp;|&nbsp; ' : '') + (endVal ? ('Tanggal Selesai: ' + endVal) : '') + '</div>';
+            const tableHtml = rekapTable.outerHTML;
+
+            const html = '<html><head>'+head+'</head><body>' + headerHtml + titleHtml + metaHtml + tableHtml +
+            '<script>\n' +
+            'const logoImg=document.getElementById("print-logo");\n' +
+            'function doPrint(){setTimeout(function(){window.focus();window.print();window.close();},120);}\n' +
+            'if(logoImg){ if(logoImg.complete){ doPrint(); } else { logoImg.onload=doPrint; logoImg.onerror=doPrint; } } else { doPrint(); }\n' +
+            '<\/script></body></html>';
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+            // wait a bit then print
+            // printing now waits for image load handled inside injected script
+            win.onload = function(){};
         }
 
         function markAllAsRead() {

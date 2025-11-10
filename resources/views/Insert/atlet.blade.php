@@ -182,6 +182,26 @@
                             </select>
                         </div>
 
+                        <!-- Pelatih (opsional) -->
+                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
+                            <label for="id_pelatih" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
+                                🧑‍🏫 Pelatih (opsional)
+                            </label>
+                            <select id="id_pelatih"
+                                    name="id_pelatih"
+                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
+                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                                <option value="">Pilih Pelatih (opsional)</option>
+                                @if(isset($dataPelatih))
+                                    @foreach($dataPelatih as $pelatih)
+                                        <option value="{{ $pelatih->id }}">{{ $pelatih->nama }} - {{ $pelatih->id_cabor ? $pelatih->cabor->nama_cabor : '—' }}</option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+
                         <!-- Tanggal Lahir -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>

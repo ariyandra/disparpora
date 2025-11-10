@@ -152,30 +152,29 @@
                             <label for="tanggal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
                                 📅 Tanggal <span style="color: #ff6b6b;">*</span>
                             </label>
-                            <input type="date" 
-                                   id="tanggal_absen" 
-                                   name="tanggal_absen" 
-                                   required
-                                   value="{{ $absensi->tanggal_absen }}"
-                                   value="{{ $absensi->tanggal_absen }}"
+                <input type="date" 
+                    id="tanggal_absen" 
+                    name="tanggal_absen" 
+                    required
+                    value="{{ !empty($absensi->tanggal_absen) ? \Carbon\Carbon::parse($absensi->tanggal_absen)->format('Y-m-d') : '' }}"
                                    style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
                                    onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Jadwal -->
-                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                        <!-- Jam -->
+                        @php
+                            $timeVal = '';
+                            if (!empty($absensi->jadwal_datetime)) {
+                                $timeVal = \Carbon\Carbon::parse($absensi->jadwal_datetime)->format('H:i');
+                            } elseif (!empty($absensi->jadwal)) {
+                                $timeVal = substr($absensi->jadwal,0,5);
+                            }
+                        @endphp
+                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden; width: 200px;">
                             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
-                            <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🕐 Jadwal <span style="color: #ff6b6b;">*</span>
-                            </label>
-                            <input type="time" 
-                                   id="jadwal" 
-                                   name="jadwal" 
-                                   required
-                                   style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                   onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                            <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">Jam</label>
+                            <input type="time" id="jadwal" name="jadwal" required value="{{ $timeVal }}" style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);" onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'" onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
                         <!-- Status -->
@@ -286,9 +285,15 @@
                 }, index * 100);
             });
 
-            // Set default tanggal to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tanggal').value = today;
+            // Set default jadwal (datetime-local) to now rounded to minutes when creating new or if empty
+            const dtNow = new Date();
+            dtNow.setSeconds(0,0);
+            function toDateTimeLocal(d){
+                const pad = (n)=>String(n).padStart(2,'0');
+                return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            }
+            const jadwalInput = document.getElementById('jadwal');
+            if (jadwalInput && !jadwalInput.value) jadwalInput.value = toDateTimeLocal(dtNow);
 
             // Character counter for keterangan
             const keteranganField = document.getElementById('keterangan');

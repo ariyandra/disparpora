@@ -108,20 +108,26 @@
                                    onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         </div>
 
-                        <!-- Jadwal -->
-                        <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
-                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: border-radius: 2px; opacity: 0; transition: opacity 0.3s ease;" class="field-indicator"></div>
-                            <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">
-                                🕐 Jadwal <span style="color: #ff6b6b;">*</span>
-                            </label>
-                            <input type="time" 
-                                   id="jadwal" 
-                                   name="jadwal" 
-                                   required
-                                   style="padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 14px; transition: all 0.3s ease; background: rgba(255, 255, 255, 0.8);"
-                                   onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
-                                   onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
-                        </div>
+                        <!-- Jadwal (datetime-local) -->
+                            @php
+                                $timeVal = '';
+                                if (!empty($dataAbsensi->jadwal_datetime)) {
+                                    $timeVal = \Carbon\Carbon::parse($dataAbsensi->jadwal_datetime)->format('H:i');
+                                } elseif (!empty($dataAbsensi->jadwal)) {
+                                    $timeVal = $dataAbsensi->jadwal;
+                                }
+                            @endphp
+
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1; display: flex; flex-direction: column;">
+                                    <label for="tanggal_absen" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">Tanggal</label>
+                                    <input type="date" id="tanggal_absen" name="tanggal_absen" class="form-control" value="{{ isset($dataAbsensi->tanggal_absen) ? \Carbon\Carbon::parse($dataAbsensi->tanggal_absen)->format('Y-m-d') : '' }}" required>
+                                </div>
+                                <div style="width: 160px; display: flex; flex-direction: column;">
+                                    <label for="jadwal" style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px;">Jam</label>
+                                    <input type="time" id="jadwal" name="jadwal" class="form-control" value="{{ $timeVal }}" required>
+                                </div>
+                            </div>
 
                         <!-- Status -->
                         <div style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
@@ -236,9 +242,15 @@
                 }, index * 100);
             });
 
-            // Set default tanggal to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tanggal').value = today;
+            // Set default jadwal (datetime-local) to now rounded to minutes when creating new
+            const dtNow = new Date();
+            dtNow.setSeconds(0,0);
+            function toDateTimeLocal(d){
+                const pad = (n)=>String(n).padStart(2,'0');
+                return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            }
+            const jadwalInput = document.getElementById('jadwal');
+            if (jadwalInput && !jadwalInput.value) jadwalInput.value = toDateTimeLocal(dtNow);
 
             // Add loading animation styles
             const style = document.createElement('style');

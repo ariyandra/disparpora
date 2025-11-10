@@ -323,7 +323,8 @@ class adminController extends Controller
 
     public function tambahAtlet(){
         $dataCabor = Cabor::all();
-        return view('insert.atlet', compact('dataCabor'));
+        $dataPelatih = Pelatih::where('status_verifikasi', 'approved')->get();
+        return view('insert.atlet', compact('dataCabor', 'dataPelatih'));
     }
 
     public function simpanAtletBaru(Request $request){
@@ -334,6 +335,7 @@ class adminController extends Controller
             'jenis_kelamin' => 'required|string|max:10',
             'no_hp' => 'required|string|max:15',
             'cabor' => 'required|exists:cabors,id',
+            'id_pelatih' => 'nullable|exists:pelatihs,id',
             'tanggal_lahir' => 'required|date',
             'tanggal_gabung' => 'required|date',
             'status' => 'required|string|max:20'
@@ -364,6 +366,10 @@ class adminController extends Controller
         $atlet->tanggal_lahir = $data['tanggal_lahir'];
         $atlet->tanggal_gabung = $data['tanggal_gabung'];
         $atlet->status = $data['status'];
+        // optional: assign pelatih if provided
+        if(isset($request->id_pelatih) && $request->id_pelatih){
+            $atlet->id_pelatih = $request->id_pelatih;
+        }
         $atlet->created_by = $user->id;
         if ($user->role == 3) {
             $atlet->status_verifikasi = 'pending_kecamatan';
@@ -429,7 +435,8 @@ class adminController extends Controller
 
         $atlet = Atlet::findOrFail($request->id_atlet);
         $dataCabor = Cabor::all();
-        return view('insert.updateAtlet', compact('atlet', 'dataCabor'));
+        $dataPelatih = Pelatih::where('status_verifikasi', 'approved')->get();
+        return view('insert.updateAtlet', compact('atlet', 'dataCabor', 'dataPelatih'));
     }
 
     public function simpanUpdateAtlet(Request $request){
@@ -441,6 +448,7 @@ class adminController extends Controller
             'password' => 'nullable|string|min:8',
             'no_hp' => 'required|string|max:15',
             'cabor' => 'required|exists:cabors,id',
+            'id_pelatih' => 'nullable|exists:pelatihs,id',
             'tanggal_lahir' => 'required|date',
             'tanggal_gabung' => 'required|date',
             'status' => 'required|string|max:20'
@@ -470,6 +478,12 @@ class adminController extends Controller
         $atlet->tanggal_lahir = $data['tanggal_lahir'];
         $atlet->tanggal_gabung = $data['tanggal_gabung'];
         $atlet->status = $data['status'];
+        // optional: assign or clear pelatih
+        if(isset($request->id_pelatih) && $request->id_pelatih){
+            $atlet->id_pelatih = $request->id_pelatih;
+        } else {
+            $atlet->id_pelatih = null;
+        }
 
         // handle foto upload (replace existing)
         if($request->hasFile('foto')){
